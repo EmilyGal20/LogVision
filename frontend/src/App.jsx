@@ -1,9 +1,11 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { useEffect } from "react";
 
 import Dashboard from "./pages/Dashboard";
 import Logs from "./pages/Logs";
 import SearchIP from "./pages/SearchIP";
-import Admin from "./pages/Admin";
+// import Admin from "./pages/Admin";
+import AdminPanel from "./pages/AdminPanel";
 import Profile from "./pages/Profile";
 import HardwareLogs from "./pages/HardwareLogs";
 import IssueDetails from "./pages/IssueDetails";
@@ -37,7 +39,9 @@ export default function App() {
                     <Route path="dashboard" element={<Dashboard />} />
                     <Route path="logs" element={<Logs />} />
                     <Route path="search" element={<SearchIP />} />
-                    <Route path="admin" element={<Admin />} />
+                    {/* <Route path="admin" element={<Admin />} /> */}
+                    <Route path="admin" element={<AdminPanel />} />
+
                     <Route path="profile" element={<Profile />} />
                     <Route path="hardware" element={<HardwareLogs />} />
                     <Route path="issue/:id" element={<IssueDetails />} />

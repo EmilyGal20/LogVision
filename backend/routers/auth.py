@@ -4,15 +4,48 @@ from database import SessionLocal
 from models import User
 from schemas import UserCreate, LoginSchema, UserOut
 import bcrypt
+from passlib.context import CryptContext
+
 from security import create_token
 from auth_dependencies import require_admin
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def hash_password(password: str):
+    return pwd_context.hash(password)
+
+
+def ensure_admin_exists():
+    db = SessionLocal()
+
+    admin = db.query(User).filter(User.role == "admin").first()
+    if admin:
+        print("Admin already exists")
+        db.close()
+        return
+
+    admin_user = User(
+        username="Admin",
+        password=hash_password("admin123"),
+        email="admin@example.com",
+        full_name="System Admin",
+        role="admin"
+    )
+
+    db.add(admin_user)
+    db.commit()
+    db.close()
+
+    print("Admin created")
 
 # ============================================================
 # DB SESSION
 # ============================================================
+
+
 def get_db():
     db = SessionLocal()
     try:
@@ -147,3 +180,8 @@ def create_admin(db: Session = Depends(get_db)):
     db.refresh(admin)
 
     return {"message": "Admin created successfully", "admin": admin}
+
+
+@router.on_event("startup")
+def seed_admin():
+    ensure_admin_exists()
