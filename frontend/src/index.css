@@ -15,10 +15,7 @@ body {
 
 /* LIGHT MODE DEFAULT VARIABLES */
 :root {
-
-
   --bg-main: #f6f8fb;
-
 
   /* Glass */
   --glass-bg: rgba(255, 255, 255, 0.4);
@@ -44,42 +41,8 @@ body {
 }
 
 /* =========================================================
-  DARK MODE VARIABLES
-========================================================= */
-
-/* .dark-mode {
-  --bg-main: #0d1117;
-  --glass-bg: rgba(16, 23, 32, 0.55);
-  --glass-border: none;
-  --text-primary: #d6ffe7;
-
-  --accent: #71ff8f;
-
-  --item-hover: rgba(255, 255, 255, 0.06);
-  --item-active: rgba(113, 255, 143, 0.12);
-
-  --sidebar-bg: rgba(255, 255, 255, 0.05);
-  --sidebar-border: rgba(255, 255, 255, 0.08);
-  --text-color: #e5e7eb;
-  --hover-bg: rgba(255, 255, 255, 0.08);
-  --active-bg: #4f46e5;
-  --active-text: #ffffff;
-} */
-
-/* =========================================================
    GLOBAL
 ========================================================= */
-
-/* html,
-body,
-#root {
-  height: 100%;
-  background: var(--bg-main) !important;
-  margin: 0;
-  padding: 0;
-
-
-} */
 
 .light-mode html,
 .light-mode body,
@@ -96,198 +59,240 @@ body.dark {
 }
 
 /* =========================================================
-   LIGHT MODE BASE
+   LIGHT MODE — BRIGHT GLASS (Mirror of Dark Mode)
 ========================================================= */
 
-/* Typography */
-.light-mode .MuiTypography-root,
-.light-mode .MuiTableCell-root,
-.light-mode .MuiButton-root,
-.light-mode .MuiInputBase-input,
-.light-mode .MuiFormLabel-root {
-  color: #222 !important;
-}
-
-/* Base Paper */
-.light-mode .MuiPaper-root {
-  background: #ffffff !important;
-  color: #222 !important;
-  border: 1px solid #e5e5e5 !important;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.04) !important;
-}
-
-/* elevation fix */
-.light-mode .MuiPaper-elevation1 {
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03) !important;
-}
-
-/* Tables */
-.light-mode table,
-.light-mode .MuiTableCell-root,
-.light-mode .MuiTableRow-root {
-  background: #ffffff !important;
-  border-color: #e0e0e0 !important;
-}
-
-.light-mode .MuiTableHead-root .MuiTableCell-root {
-  background: #fafafa !important;
-  color: #222 !important;
-  font-weight: 600 !important;
-}
-
-/* Tabs */
-.light-mode .MuiTabs-root {
-  background: #ffffff !important;
-  border: 1px solid #e0e0e0 !important;
-  border-radius: 10px;
-}
-
-/* Textfields */
-.light-mode .MuiOutlinedInput-notchedOutline {
-  border-color: #d0d0d0 !important;
-}
-
-/* Buttons */
-.light-mode .MuiButton-root {
-  border: 1px solid #d6d6d6 !important;
-  color: #222 !important;
-  font-weight: 600;
-  background: #ffffff !important;
-}
-
-/* Custom cards */
-.light-mode .hw-card,
-.light-mode .dark-box {
-  background: #ffffff !important;
-  color: #1a1a1a !important;
-}
-
-/* Remove outlines */
-.light-mode * {
-  outline: none !important;
-  border-color: inherit !important;
-}
-
-/* =========================================================
-   ⭐ LIGHT NAVY BRIGHT THEME — FINAL VERSION
-========================================================= */
-
-/* Main background */
 .light-mode html,
 .light-mode body {
-  background: linear-gradient(180deg,
-      #c3cede 0%,
-      #b7c7d9 35%,
-      #acb9d0 65%,
-      #9caac7 100%) !important;
-
+  background:
+    radial-gradient(circle at 20% 15%, rgba(139, 92, 246, 0.18), transparent 45%),
+    radial-gradient(circle at 80% 65%, rgba(99, 102, 241, 0.16), transparent 50%),
+    linear-gradient(180deg, #f5f7fb, #e8edf6 70%) !important;
   background-attachment: fixed !important;
   background-size: cover !important;
   background-repeat: no-repeat !important;
 }
 
-/* Glow layer */
+/* Soft glow layer */
 .light-mode #root::before {
   content: "";
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-
-  background:
-    radial-gradient(circle at 30% 20%, rgba(200, 215, 240, 0.35), transparent 60%),
-    radial-gradient(circle at 75% 70%, rgba(170, 190, 225, 0.30), transparent 70%);
-
+  inset: 0;
   pointer-events: none;
   z-index: -1;
+  background:
+    radial-gradient(circle at 30% 20%, rgba(139, 92, 246, 0.18), transparent 55%),
+    radial-gradient(circle at 75% 70%, rgba(99, 102, 241, 0.15), transparent 60%);
+}
+
+.light-mode .form-section {
+  margin-bottom: 24px;
 }
 
 /* =========================================================
-   UI ENHANCEMENTS
+   GLASS CARDS (Paper, Panels)
 ========================================================= */
 
-/* Paper (glass card) */
 .light-mode .MuiPaper-root {
-  background: rgba(255, 255, 255, 0.86) !important;
-  border: 1px solid rgba(150, 165, 200, 0.35) !important;
-  backdrop-filter: blur(16px) !important;
-  box-shadow: 0 8px 22px rgba(90, 110, 160, 0.22) !important;
+  background-color: rgba(255, 255, 255, 0.65) !important;
+  backdrop-filter: blur(20px) saturate(1.2) !important;
+
+  box-shadow:
+    0 0 0 1px rgba(99, 102, 241, 0.25),
+    0 14px 38px rgba(30, 64, 175, 0.25),
+    inset 0 0 30px rgba(139, 92, 246, 0.04) !important;
+
+  border-radius: 18px !important;
+  border: none !important;
+  transition: 0.25s ease;
 }
 
-/* Buttons */
-.light-mode .MuiButton-root {
-  background: linear-gradient(180deg, #ffffff 0%, #eef3ff 100%) !important;
-  border-radius: 10px !important;
-  border: 1px solid rgba(130, 150, 190, 0.55) !important;
-  padding: 6px 16px !important;
-  color: #1b2942 !important;
-  transition: 0.25s ease !important;
+.light-mode .MuiPaper-root:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 0 0 1px rgba(139, 92, 246, 0.35),
+    0 18px 42px rgba(99, 102, 241, 0.45) !important;
 }
 
-.light-mode .MuiButton-root:hover {
-  background: #d7e1f7 !important;
-  border-color: #375a9e !important;
-  box-shadow: 0 4px 12px rgba(90, 120, 170, 0.35) !important;
+/* Primary filter / hero card */
+.light-mode .MuiPaper-root.filter-card {
+  background: rgba(255, 255, 255, 0.62) !important;
+  box-shadow:
+    0 0 0 1px rgba(139, 92, 246, 0.25),
+    0 20px 48px rgba(99, 102, 241, 0.45),
+    inset 0 0 60px rgba(139, 92, 246, 0.06) !important;
 }
 
-/* Typography */
+.light-mode canvas {
+  filter: drop-shadow(0 12px 24px rgba(99, 102, 241, 0.25));
+}
+
+/* =========================================================
+   TYPOGRAPHY
+========================================================= */
+
+.light-mode h1,
+.light-mode h2,
+.light-mode h3,
+.light-mode h4,
+.light-mode h5,
+.light-mode h6,
 .light-mode .MuiTypography-root {
-  color: #1c2635 !important;
+  color: #0f172a !important;
+  letter-spacing: -0.02em;
 }
 
-/* Table hover */
-.light-mode .MuiTableRow-root:hover {
-  background: rgba(185, 210, 240, 0.34) !important;
+body.light-mode .MuiTypography-root,
+body.light-mode h1,
+body.light-mode h2,
+body.light-mode h3,
+body.light-mode h4 {
+  text-shadow: 0 1px 2px rgba(15, 23, 42, 0.10);
 }
 
-/* Textfields */
-.light-mode .MuiOutlinedInput-notchedOutline {
-  border-color: rgba(150, 165, 200, 0.6) !important;
+.light-mode .MuiTypography-body1 {
+  color: #334155 !important;
 }
 
-.light-mode .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
-  border-color: #5c7bbd !important;
-}
+/* =========================================================
+   INPUTS — GLASS STYLE (SOFT & CLEAN)
+========================================================= */
 
-.light-mode .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
-  border-color: #3d5da7 !important;
-}
-
-.light-mode .MuiOutlinedInput-input {
-  background: rgba(255, 255, 255, 0.75) !important;
-}
-
-/* Tabs */
-.light-mode .MuiTabs-root {
-  background: rgba(255, 255, 255, 0.75) !important;
-  border: 1px solid rgba(150, 170, 200, 0.5) !important;
+.light-mode .MuiInputBase-root {
+  background: rgba(245, 247, 255, 0.55) !important;
+  backdrop-filter: blur(8px);
   border-radius: 10px;
-  backdrop-filter: blur(10px);
+  color: #1f2937 !important;
+}
+
+.light-mode .MuiOutlinedInput-notchedOutline {
+  border-color: rgba(99, 102, 241, 0.22) !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.light-mode .MuiInputLabel-root {
+  color: #64748b !important;
+}
+
+.light-mode .MuiInputBase-root:hover .MuiOutlinedInput-notchedOutline {
+  border-color: rgba(99, 102, 241, 0.35) !important;
+}
+
+.light-mode .MuiInputBase-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: rgba(99, 102, 241, 0.45) !important;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.12);
+}
+
+/* =========================================================
+   BUTTONS
+========================================================= */
+
+.light-mode .MuiButton-contained {
+  background: linear-gradient(135deg, #8b5cf6, #6366f1) !important;
+  color: white !important;
+  box-shadow: 0 6px 18px rgba(99, 102, 241, 0.45);
+}
+
+.light-mode .MuiButton-contained:hover {
+  box-shadow: 0 10px 26px rgba(139, 92, 246, 0.6);
+  transform: translateY(-2px);
+}
+
+.light-mode .MuiButton-outlined {
+  border-color: rgba(139, 92, 246, 0.55) !important;
+  color: #4338ca !important;
+}
+
+/* =========================================================
+   TABS
+========================================================= */
+
+.light-mode .MuiTabs-root {
+  border-radius: 12px;
+  text-shadow: 0 1px 1px rgba(15, 23, 42, 0.08);
 }
 
 .light-mode .MuiTab-root {
-  color: #2b3d55 !important;
+  color: #505579 !important;
+  font-weight: 600;
 }
 
 .light-mode .Mui-selected {
-  color: #3b5ea7 !important;
+  color: #4f46e5 !important;
   font-weight: 700 !important;
 }
 
-/* Chips */
+/* =========================================================
+   TABLES
+========================================================= */
+
+.light-mode .MuiTableRow-root:hover {
+  background: rgba(139, 92, 246, 0.12) !important;
+}
+
+/* =========================================================
+   CHIPS
+========================================================= */
+
 .light-mode .MuiChip-root {
-  background: #e6eefb !important;
-  border: 1px solid #4aa9ff !important;
-  color: #1d2e45 !important;
-  font-weight: 600 !important;
+  background: rgba(139, 92, 246, 0.15) !important;
+  border: 1px solid rgba(139, 92, 246, 0.45) !important;
+  color: #312e81 !important;
+  font-weight: 600;
 }
 
-::-webkit-scrollbar {
-  width: 6px;
+/* =========================================================
+   SCROLLBAR
+========================================================= */
+
+.light-mode::-webkit-scrollbar {
+  width: 8px;
 }
 
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, .2);
-  border-radius: 8px;
+.light-mode::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #a78bfa, #6366f1);
+  border-radius: 10px;
+}
+
+/* =========================================================
+   FINAL GLOBAL FIX — Light Mode MUI Paper (PUT LAST)
+   Works when body has class="light-mode"
+   Fixes the white "inner cubes" from MUI overlay + elevations
+========================================================= */
+
+body.light-mode {
+  --paper-bg: rgba(245, 247, 255, 0.75);
+  --paper-bg-inner: gba(245, 247, 255, 0.75);
+}
+
+/* base paper */
+body.light-mode .MuiPaper-root {
+  background: var(--paper-bg) !important;
+  background-color: var(--paper-bg) !important;
+
+  /* kills MUI overlay var(--Paper-overlay) */
+  --Paper-overlay: none !important;
+  background-image: none !important;
+}
+
+/* catch ALL elevations robustly */
+body.light-mode .MuiPaper-root[class*="MuiPaper-elevation"],
+body.light-mode .MuiPaper-root.MuiPaper-elevation0,
+body.light-mode .MuiPaper-root.MuiPaper-elevation1,
+body.light-mode .MuiPaper-root.MuiPaper-elevation2,
+body.light-mode .MuiPaper-root.MuiPaper-elevation3,
+body.light-mode .MuiPaper-root.MuiPaper-elevation4,
+body.light-mode .MuiPaper-root.MuiPaper-rounded {
+  background: var(--paper-bg) !important;
+  background-color: var(--paper-bg) !important;
+  --Paper-overlay: none !important;
+  background-image: none !important;
+}
+
+/* Paper inside Paper (the "inner cubes") */
+body.light-mode .MuiPaper-root .MuiPaper-root {
+  background: var(--paper-bg-inner) !important;
+  background-color: var(--paper-bg-inner) !important;
+  --Paper-overlay: none !important;
+  background-image: none !important;
 }

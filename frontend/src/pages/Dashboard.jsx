@@ -198,7 +198,8 @@ export default function Dashboard() {
         ],
     };
 
-    const bgCard = mode === "dark" ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)";
+    // const bgCard = mode === "dark" ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)";
+    const bgCard = "transparent";
     const textPrimary = mode === "dark" ? "#e5e7eb" : "#1f2937";
 
     const StatCard = ({ title, value, color, onClick }) => (
@@ -269,7 +270,7 @@ export default function Dashboard() {
 
             {/* ISSUE TIMELINE */}
             <Typography variant="h5" mt={4} mb={2} sx={{ color: textPrimary }}>Issue Timeline</Typography>
-            <Paper sx={{ p: 2, borderRadius: 3, background: bgCard, width: "80%" }}>
+            <Paper sx={{ p: 2, borderRadius: 3, background: bgCard, width: "80%", }}>
                 {timeline.map((log, index) => (
                     <motion.div
                         key={`${log.id}-${index}`}

@@ -126,7 +126,9 @@ export default function Logs() {
     // ============================================================
     // UI
     // ============================================================
-    const bgCard = mode === "dark" ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)";
+    // const bgCard = mode === "dark" ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)";
+    const bgCard = "transparent";
+
     const textColor = mode === "dark" ? "#e5e7eb" : "#1f2937";
 
     const severityColor = {

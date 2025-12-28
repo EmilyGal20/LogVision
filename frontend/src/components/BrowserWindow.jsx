@@ -1,3 +1,4 @@
+
 // components/BrowserWindow.jsx
 import { Box, Paper, IconButton, Typography } from "@mui/material";
 // import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
@@ -34,6 +35,7 @@ export default function BrowserWindow({
     onResize,
     onTabsChange,
 }) {
+
 
     const renderTab = () => {
         switch (window.activeTab) {
