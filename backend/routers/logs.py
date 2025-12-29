@@ -8,6 +8,8 @@ from schemas import LogCreate, LogOut, LogRead
 
 import json
 from pathlib import Path
+# from utils.mac import normalize_mac, is_valid_mac
+
 
 router = APIRouter(prefix="/logs", tags=["Logs"])
 

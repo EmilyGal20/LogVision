@@ -163,6 +163,7 @@ body.light-mode h4 {
   backdrop-filter: blur(8px);
   border-radius: 10px;
   color: #1f2937 !important;
+
 }
 
 .light-mode .MuiOutlinedInput-notchedOutline {
@@ -261,8 +262,8 @@ body.light-mode h4 {
 ========================================================= */
 
 body.light-mode {
-  --paper-bg: rgba(245, 247, 255, 0.75);
-  --paper-bg-inner: gba(245, 247, 255, 0.75);
+  --paper-bg: rgba(245, 247, 255, 0.80);
+  --paper-bg-inner: rgba(224, 227, 237, 0.75);
 }
 
 /* base paper */

@@ -10,6 +10,7 @@ import Profile from "./pages/Profile";
 import HardwareLogs from "./pages/HardwareLogs";
 import IssueDetails from "./pages/IssueDetails";
 import RealTimeIP from "./pages/RealTimeIP";
+// import CreateLog from "./pages/CreateLog";
 
 import OSFrame from "./components/OSFrame";
 import BrowserWindow from "./components/BrowserWindow";
@@ -46,6 +47,8 @@ export default function App() {
                     <Route path="hardware" element={<HardwareLogs />} />
                     <Route path="issue/:id" element={<IssueDetails />} />
                     <Route path="realtime" element={<RealTimeIP />} />
+                    {/* <Route path="/logs/new" element={<CreateLog />} /> */}
+
                 </Route>
             </Routes>
         </BrowserRouter>
