@@ -202,11 +202,24 @@ body.dark::-webkit-scrollbar-track {
    PURPLE DOMINANT LAYER — Dark stays secondary
 ========================================================= */
 
+/*body.dark::before {
+  content: "";
+   position: fixed;
+  inset: 0;
+  z-index: 0; 
+  pointer-events: none;
+
+  background:
+    radial-gradient(circle at 30% 20%, rgba(124, 58, 237, 0.55), transparent 45%),
+    radial-gradient(circle at 75% 65%, rgba(139, 92, 246, 0.45), transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.25), transparent 60%);
+}*/
+
 body.dark::before {
   content: "";
-  /* position: fixed;
+  position: fixed;
   inset: 0;
-  z-index: 0; */
+  z-index: 0;
   pointer-events: none;
 
   background:
@@ -214,6 +227,7 @@ body.dark::before {
     radial-gradient(circle at 75% 65%, rgba(139, 92, 246, 0.45), transparent 50%),
     radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.25), transparent 60%);
 }
+
 
 /* =========================================================
    ROOT ABOVE PURPLE LAYER

@@ -135,17 +135,27 @@ export default function Dashboard() {
         ws.onopen = () => console.log("WebSocket connected to /ws/errors");
 
         ws.onmessage = (msg) => {
+            console.log("WS raw:", msg.data);
+
             try {
-                const data = JSON.parse(msg.data);
-                if (data.new) {
-                    setNewIssue(data.new);
+                const incoming = JSON.parse(msg.data);
+                const alertPayload = incoming?.payload ?? incoming;
+
+
+                // אם זה באמת נראה כמו Alert (יש type/message לפחות)
+                if (alertPayload?.type && alertPayload?.message) {
+                    setNewIssue(alertPayload);
                     setShowNewAlert(true);
+
                 }
+
+                // אם את רוצה לרענן נתונים אחרי כל alert:
                 loadData();
             } catch (err) {
-                console.error("Failed to parse WS message", err);
+                console.error("Failed to parse WS message", err, msg.data);
             }
         };
+
 
         ws.onerror = (err) => console.error("WebSocket error:", err);
 
@@ -301,11 +311,16 @@ export default function Dashboard() {
             </Paper>
 
             {/* LIVE ALERT SNACKBAR */}
-            <Snackbar open={showNewAlert} autoHideDuration={4000} onClose={() => setShowNewAlert(false)}>
+            <Snackbar
+                open={showNewAlert}
+                autoHideDuration={4000}
+                onClose={() => setShowNewAlert(false)}
+            >
                 <Alert severity="error" sx={{ fontSize: 16 }}>
-                    🚨 New LIVE Issue: {newIssue?.error_type} ({newIssue?.ip})
+                    🚨 New LIVE Alert: {newIssue?.type} ({newIssue?.device_ip || "unknown"})
                 </Alert>
             </Snackbar>
+
         </Box>
     );
 }

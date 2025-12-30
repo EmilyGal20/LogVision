@@ -2,7 +2,7 @@
    REALTIME IP MONITOR — LOGVISION CLEAN DARK EDITION
 —————————————————————————————— */
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { api } from "../api";
 import {
     Box,
@@ -78,6 +78,16 @@ export default function RealtimeIP() {
     const scoreRef = useRef(0);
     const [scoreHistory, setScoreHistory] = useState([]);
     const wsRef = useRef(null);
+    const activeIPRef = useRef(null);
+
+    useEffect(() => {
+        return () => {
+            if (wsRef.current) {
+                wsRef.current.close();
+                wsRef.current = null;
+            }
+        };
+    }, []);
 
     /* ——————————————————————————
        RESET GRAPHS
@@ -93,20 +103,25 @@ export default function RealtimeIP() {
     /* ——————————————————————————
        START MONITORING
     ——————————————————————————— */
-    const startIP = async (ipToStart) => {
-        await api.get(`/realtime/start/${ipToStart}`);
+    const startIP = async (ipToStart, shouldStartBackend = true) => {
+        if (shouldStartBackend) {
+            await api.get(`/realtime/start/${ipToStart}`);
+        }
 
         if (!multiIPs.includes(ipToStart)) {
             setMultiIPs(prev => [...prev, ipToStart]);
         }
 
         setActiveIP(ipToStart);
+        activeIPRef.current = ipToStart;
         resetCharts();
+
 
         if (wsRef.current) wsRef.current.close();
 
         const ws = new WebSocket(`ws://localhost:8000/realtime/ws/${ipToStart}`);
         wsRef.current = ws;
+
 
         ws.onmessage = (event) => {
             const p = JSON.parse(event.data);
@@ -120,7 +135,7 @@ export default function RealtimeIP() {
                 }
             }));
 
-            if (activeIP !== ipToStart) return;
+            if (activeIPRef.current !== ipToStart) return;
 
             if (p.latency !== null) {
                 setLatencyHistory(prev => [...prev, { time: Date.now(), value: p.latency }]);
@@ -147,7 +162,7 @@ export default function RealtimeIP() {
 
     const startMonitoring = () => {
         if (!ip) return;
-        startIP(ip);
+        startIP(ip, true);
     };
 
     /* ——————————————————————————
@@ -160,6 +175,7 @@ export default function RealtimeIP() {
 
         if (activeIP === ipToClose) {
             setActiveIP(null);
+            activeIPRef.current = null;
             resetCharts();
         }
 
@@ -177,8 +193,9 @@ export default function RealtimeIP() {
     ——————————————————————————— */
     const switchTab = (newIP) => {
         setActiveIP(newIP);
+        activeIPRef.current = newIP;
         resetCharts();
-        startIP(newIP);
+        startIP(newIP, false);
     };
 
     /* ——————————————————————————

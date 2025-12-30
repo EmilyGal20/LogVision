@@ -1,7 +1,9 @@
 from fastapi import APIRouter, WebSocket, Depends
 from database import SessionLocal
 from models import MonitorHistory
-from auth_dependencies import require_admin
+from auth_dependencies import require_admin, require_user
+# from security import verify_token
+# from fastapi import WebSocketException
 
 from sqlalchemy import asc, desc
 from monitor import (
@@ -16,17 +18,31 @@ import asyncio
 
 router = APIRouter(prefix="/realtime")
 
+# ============================================================
+#  WS AUTH HELPER
+# ============================================================
 
-@router.get("/", dependencies=[Depends(require_admin)])
-def get_users():
-    return ["only admin can see this"]
+# def _get_ws_token(websocket: WebSocket) -> str | None:
+#     auth = websocket.headers.get("authorization")
+#     if not auth:
+#         return None
+
+#     parts = auth.split(" ")
+#     if len(parts) == 2 and parts[0].lower() == "bearer":
+#         return parts[1]
+
+#     return None
+
+# @router.get("/", dependencies=[Depends(require_admin)])
+# def get_users():
+#     return ["only admin can see this"]
 
 # ============================================================
 #   START MONITORING
 # ============================================================
 
 
-@router.get("/start/{ip}")
+@router.get("/start/{ip}", dependencies=[Depends(require_admin)])
 def start(ip: str):
     """ מתחיל ניטור ל-IP (אם לא פעיל כבר) """
     start_monitoring(ip)
@@ -37,7 +53,7 @@ def start(ip: str):
 #   STATUS (POLLED STATUS)
 # ============================================================
 
-@router.get("/status/{ip}")
+@router.get("/status/{ip}", dependencies=[Depends(require_user)])
 def status(ip: str):
     """ סטטוס חי (ל־React שמבצע Polling) """
     return monitoring_results.get(ip, {
@@ -52,7 +68,7 @@ def status(ip: str):
 #   HISTORY — FULL HISTORY FOR GRAPHS
 # ============================================================
 
-@router.get("/history/{ip}")
+@router.get("/history/{ip}", dependencies=[Depends(require_user)])
 def history(ip: str):
     """ היסטוריית ניטור מלאה (לגרפים גדולים) """
     db = SessionLocal()
@@ -72,7 +88,7 @@ def history(ip: str):
 #   NEW: LAST 20 PING RESULTS (IssueDetails Page)
 # ============================================================
 
-@router.get("/ping-history/{ip}")
+@router.get("/ping-history/{ip}", dependencies=[Depends(require_user)])
 def ping_history(ip: str):
     """
     מחזיר את 20 בדיקות הפינג האחרונות — 
@@ -96,7 +112,7 @@ def ping_history(ip: str):
 #   STOP MONITORING
 # ============================================================
 
-@router.get("/stop/{ip}")
+@router.get("/stop/{ip}", dependencies=[Depends(require_admin)])
 def stop(ip: str):
     """ מפסיק ניטור ונותן תגובה מסודרת ל־React """
 
@@ -139,3 +155,35 @@ async def ws_monitor(websocket: WebSocket, ip: str):
             pass
 
         print(f"[WS] WebSocket closed for {ip}")
+
+
+# @router.websocket("/ws/{ip}")
+# async def ws_monitor(websocket: WebSocket, ip: str):
+
+#     token = _get_ws_token(websocket)
+#     payload = verify_token(token) if token else None
+
+#     if payload is None:
+#         # 1008 = Policy Violation (מקובל ל-auth failure)
+#         await websocket.close(code=1008)
+#         print("[WS] Unauthorized websocket connection blocked")
+#         return
+
+#     await websocket.accept()
+#     print(f"[WS] Authorized client connected for {ip}")
+
+#     try:
+#         while True:
+#             data = get_realtime_data(ip)
+#             await websocket.send_json(data)
+#             await asyncio.sleep(1)
+
+#     except Exception as e:
+#         print(f"[WS CLOSED] Client disconnected for {ip}: {e}")
+
+#     finally:
+#         try:
+#             await websocket.close()
+#         except:
+#             pass
+#         print(f"[WS] WebSocket closed for {ip}")

@@ -18,7 +18,9 @@
 
 import React from "react";
 import ReactDOM from "react-dom/client";
-import App from "./App";
+// import App from "./App"; //WEB FRAME
+import App from "./App.jsx";  // NORMAL WEB
+
 import ThemeController from "./context/ThemeContext";
 import "./index.css";
 

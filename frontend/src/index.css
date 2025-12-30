@@ -1,5 +1,5 @@
 /* =========================================================
-   THEME VARIABLES
+   BASE
 ========================================================= */
 * {
   box-sizing: border-box;
@@ -13,57 +13,48 @@ body {
   height: 100%;
 }
 
-/* LIGHT MODE DEFAULT VARIABLES */
-:root {
-  --bg-main: #f6f8fb;
-
-  /* Glass */
-  --glass-bg: rgba(255, 255, 255, 0.4);
-  --glass-border: none;
-
-  /* Text */
-  --text-primary: #2b3440;
-
-  /* Accent */
-  --accent: #4aa9ff;
-
-  /* Hover / Active */
-  --item-hover: rgba(0, 0, 0, 0.05);
-  --item-active: rgba(74, 169, 255, 0.15);
-
-  /* Sidebar */
-  --sidebar-bg: #ffffff;
-  --sidebar-border: #e5e7eb;
-  --text-color: #374151;
-  --hover-bg: rgba(0, 0, 0, 0.05);
-  --active-bg: #6366f1;
-  --active-text: #ffffff;
-}
-
-/* =========================================================
-   GLOBAL
-========================================================= */
-
-.light-mode html,
-.light-mode body,
-.light-mode #root {
-  background: var(--bg-main) !important;
-}
-
-body.dark {
-  background: none !important;
-}
-
 #root {
   isolation: isolate;
 }
 
 /* =========================================================
-   LIGHT MODE — BRIGHT GLASS (Mirror of Dark Mode)
+   THEME VARIABLES (defaults)
 ========================================================= */
+:root {
+  --bg-main: #f6f8fb;
 
-.light-mode html,
-.light-mode body {
+  /* Text */
+  --text-primary: #0f172a;
+  --text-color: #111827;
+
+  /* Accent */
+  --accent: #4aa9ff;
+
+  /* Hover / Active */
+  --item-hover: rgba(15, 23, 42, 0.06);
+  --item-active: rgba(99, 102, 241, 0.20);
+
+  /* Sidebar */
+  --sidebar-bg: #ffffff;
+  --sidebar-border: rgba(99, 102, 241, 0.12);
+
+  /* Paper */
+  --paper-bg: rgba(255, 255, 255, 0.94);
+  --paper-bg-inner: rgba(248, 250, 252, 0.96);
+}
+
+/* =========================================================
+   LIGHT MODE (support both body.light-mode and body.light)
+========================================================= */
+body.light-mode,
+body.light {
+  background: var(--bg-main) !important;
+  color: var(--text-color);
+}
+
+body.light-mode,
+body.light {
+  /* main background */
   background:
     radial-gradient(circle at 20% 15%, rgba(139, 92, 246, 0.18), transparent 45%),
     radial-gradient(circle at 80% 65%, rgba(99, 102, 241, 0.16), transparent 50%),
@@ -74,7 +65,8 @@ body.dark {
 }
 
 /* Soft glow layer */
-.light-mode #root::before {
+body.light-mode #root::before,
+body.light #root::before {
   content: "";
   position: fixed;
   inset: 0;
@@ -85,159 +77,149 @@ body.dark {
     radial-gradient(circle at 75% 70%, rgba(99, 102, 241, 0.15), transparent 60%);
 }
 
-.light-mode .form-section {
-  margin-bottom: 24px;
-}
-
 /* =========================================================
-   GLASS CARDS (Paper, Panels)
+   MUI PAPER (Cards/Panels) — NOT PALE
 ========================================================= */
+body.light-mode .MuiPaper-root,
+body.light .MuiPaper-root {
+  background: var(--paper-bg) !important;
+  background-color: var(--paper-bg) !important;
+  --Paper-overlay: none !important;
+  background-image: none !important;
 
-.light-mode .MuiPaper-root {
-  background-color: rgba(255, 255, 255, 0.65) !important;
-  backdrop-filter: blur(20px) saturate(1.2) !important;
-
-  box-shadow:
-    0 0 0 1px rgba(99, 102, 241, 0.25),
-    0 14px 38px rgba(30, 64, 175, 0.25),
-    inset 0 0 30px rgba(139, 92, 246, 0.04) !important;
+  backdrop-filter: blur(8px) saturate(1.05) !important;
+  -webkit-backdrop-filter: blur(8px) saturate(1.05) !important;
 
   border-radius: 18px !important;
   border: none !important;
-  transition: 0.25s ease;
-}
 
-.light-mode .MuiPaper-root:hover {
-  transform: translateY(-2px);
   box-shadow:
-    0 0 0 1px rgba(139, 92, 246, 0.35),
-    0 18px 42px rgba(99, 102, 241, 0.45) !important;
+    0 0 0 1px rgba(99, 102, 241, 0.14),
+    0 10px 22px rgba(15, 23, 42, 0.10) !important;
 }
 
-/* Primary filter / hero card */
-.light-mode .MuiPaper-root.filter-card {
-  background: rgba(255, 255, 255, 0.62) !important;
+body.light-mode .MuiPaper-root:hover,
+body.light .MuiPaper-root:hover {
+  transform: translateY(-1px);
   box-shadow:
-    0 0 0 1px rgba(139, 92, 246, 0.25),
-    0 20px 48px rgba(99, 102, 241, 0.45),
-    inset 0 0 60px rgba(139, 92, 246, 0.06) !important;
+    0 0 0 1px rgba(99, 102, 241, 0.18),
+    0 14px 28px rgba(15, 23, 42, 0.14) !important;
 }
 
-.light-mode canvas {
-  filter: drop-shadow(0 12px 24px rgba(99, 102, 241, 0.25));
+/* Paper inside Paper (inner cards) */
+body.light-mode .MuiPaper-root .MuiPaper-root,
+body.light .MuiPaper-root .MuiPaper-root {
+  background: var(--paper-bg-inner) !important;
+  background-color: var(--paper-bg-inner) !important;
+  --Paper-overlay: none !important;
+  background-image: none !important;
 }
 
 /* =========================================================
-   TYPOGRAPHY
+   DRAWER (Sidebar) — override sx translucency
 ========================================================= */
-
-.light-mode h1,
-.light-mode h2,
-.light-mode h3,
-.light-mode h4,
-.light-mode h5,
-.light-mode h6,
-.light-mode .MuiTypography-root {
-  color: #0f172a !important;
-  letter-spacing: -0.02em;
+body.light-mode .MuiDrawer-paper,
+body.light .MuiDrawer-paper {
+  background-color: rgba(255, 255, 255, 0.92) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  border-right: 1px solid var(--sidebar-border) !important;
 }
 
+/* =========================================================
+   TYPOGRAPHY — crisp
+========================================================= */
 body.light-mode .MuiTypography-root,
+body.light .MuiTypography-root,
 body.light-mode h1,
 body.light-mode h2,
 body.light-mode h3,
-body.light-mode h4 {
-  text-shadow: 0 1px 2px rgba(15, 23, 42, 0.10);
+body.light-mode h4,
+body.light-mode h5,
+body.light-mode h6,
+body.light h1,
+body.light h2,
+body.light h3,
+body.light h4,
+body.light h5,
+body.light h6 {
+  color: var(--text-primary) !important;
+  letter-spacing: -0.02em;
+  text-shadow: none !important;
 }
 
-.light-mode .MuiTypography-body1 {
-  color: #334155 !important;
+body.light-mode .MuiTypography-body1,
+body.light .MuiTypography-body1 {
+  color: var(--text-color) !important;
 }
 
 /* =========================================================
-   INPUTS — GLASS STYLE (SOFT & CLEAN)
+   INPUTS — readable
 ========================================================= */
-
-.light-mode .MuiInputBase-root {
-  background: rgba(245, 247, 255, 0.55) !important;
-  backdrop-filter: blur(8px);
+body.light-mode .MuiInputBase-root,
+body.light .MuiInputBase-root {
+  background: rgba(248, 250, 252, 0.92) !important;
   border-radius: 10px;
-  color: #1f2937 !important;
-
+  color: var(--text-color) !important;
 }
 
-.light-mode .MuiOutlinedInput-notchedOutline {
-  border-color: rgba(99, 102, 241, 0.22) !important;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+body.light-mode .MuiOutlinedInput-notchedOutline,
+body.light .MuiOutlinedInput-notchedOutline {
+  border-color: rgba(99, 102, 241, 0.24) !important;
 }
 
-.light-mode .MuiInputLabel-root {
-  color: #64748b !important;
+body.light-mode .MuiInputLabel-root,
+body.light .MuiInputLabel-root {
+  color: rgba(15, 23, 42, 0.60) !important;
 }
 
-.light-mode .MuiInputBase-root:hover .MuiOutlinedInput-notchedOutline {
-  border-color: rgba(99, 102, 241, 0.35) !important;
-}
-
-.light-mode .MuiInputBase-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+body.light-mode .MuiInputBase-root.Mui-focused .MuiOutlinedInput-notchedOutline,
+body.light .MuiInputBase-root.Mui-focused .MuiOutlinedInput-notchedOutline {
   border-color: rgba(99, 102, 241, 0.45) !important;
   box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.12);
+}
+
+/* Placeholder */
+body.light-mode input::placeholder,
+body.light input::placeholder {
+  color: rgba(15, 23, 42, 0.55) !important;
+  opacity: 1 !important;
 }
 
 /* =========================================================
    BUTTONS
 ========================================================= */
-
-.light-mode .MuiButton-contained {
+body.light-mode .MuiButton-contained,
+body.light .MuiButton-contained {
   background: linear-gradient(135deg, #8b5cf6, #6366f1) !important;
-  color: white !important;
-  box-shadow: 0 6px 18px rgba(99, 102, 241, 0.45);
+  color: #fff !important;
+  box-shadow: 0 6px 18px rgba(99, 102, 241, 0.35);
 }
 
-.light-mode .MuiButton-contained:hover {
-  box-shadow: 0 10px 26px rgba(139, 92, 246, 0.6);
+body.light-mode .MuiButton-contained:hover,
+body.light .MuiButton-contained:hover {
+  box-shadow: 0 10px 26px rgba(139, 92, 246, 0.45);
   transform: translateY(-2px);
 }
 
-.light-mode .MuiButton-outlined {
+body.light-mode .MuiButton-outlined,
+body.light .MuiButton-outlined {
   border-color: rgba(139, 92, 246, 0.55) !important;
   color: #4338ca !important;
 }
 
 /* =========================================================
-   TABS
+   TABLES / CHIPS
 ========================================================= */
-
-.light-mode .MuiTabs-root {
-  border-radius: 12px;
-  text-shadow: 0 1px 1px rgba(15, 23, 42, 0.08);
+body.light-mode .MuiTableRow-root:hover,
+body.light .MuiTableRow-root:hover {
+  background: rgba(139, 92, 246, 0.10) !important;
 }
 
-.light-mode .MuiTab-root {
-  color: #505579 !important;
-  font-weight: 600;
-}
-
-.light-mode .Mui-selected {
-  color: #4f46e5 !important;
-  font-weight: 700 !important;
-}
-
-/* =========================================================
-   TABLES
-========================================================= */
-
-.light-mode .MuiTableRow-root:hover {
-  background: rgba(139, 92, 246, 0.12) !important;
-}
-
-/* =========================================================
-   CHIPS
-========================================================= */
-
-.light-mode .MuiChip-root {
-  background: rgba(139, 92, 246, 0.15) !important;
-  border: 1px solid rgba(139, 92, 246, 0.45) !important;
+body.light-mode .MuiChip-root,
+body.light .MuiChip-root {
+  background: rgba(139, 92, 246, 0.14) !important;
+  border: 1px solid rgba(139, 92, 246, 0.32) !important;
   color: #312e81 !important;
   font-weight: 600;
 }
@@ -245,55 +227,13 @@ body.light-mode h4 {
 /* =========================================================
    SCROLLBAR
 ========================================================= */
-
-.light-mode::-webkit-scrollbar {
+body.light-mode::-webkit-scrollbar,
+body.light::-webkit-scrollbar {
   width: 8px;
 }
 
-.light-mode::-webkit-scrollbar-thumb {
+body.light-mode::-webkit-scrollbar-thumb,
+body.light::-webkit-scrollbar-thumb {
   background: linear-gradient(180deg, #a78bfa, #6366f1);
   border-radius: 10px;
-}
-
-/* =========================================================
-   FINAL GLOBAL FIX — Light Mode MUI Paper (PUT LAST)
-   Works when body has class="light-mode"
-   Fixes the white "inner cubes" from MUI overlay + elevations
-========================================================= */
-
-body.light-mode {
-  --paper-bg: rgba(245, 247, 255, 0.80);
-  --paper-bg-inner: rgba(224, 227, 237, 0.75);
-}
-
-/* base paper */
-body.light-mode .MuiPaper-root {
-  background: var(--paper-bg) !important;
-  background-color: var(--paper-bg) !important;
-
-  /* kills MUI overlay var(--Paper-overlay) */
-  --Paper-overlay: none !important;
-  background-image: none !important;
-}
-
-/* catch ALL elevations robustly */
-body.light-mode .MuiPaper-root[class*="MuiPaper-elevation"],
-body.light-mode .MuiPaper-root.MuiPaper-elevation0,
-body.light-mode .MuiPaper-root.MuiPaper-elevation1,
-body.light-mode .MuiPaper-root.MuiPaper-elevation2,
-body.light-mode .MuiPaper-root.MuiPaper-elevation3,
-body.light-mode .MuiPaper-root.MuiPaper-elevation4,
-body.light-mode .MuiPaper-root.MuiPaper-rounded {
-  background: var(--paper-bg) !important;
-  background-color: var(--paper-bg) !important;
-  --Paper-overlay: none !important;
-  background-image: none !important;
-}
-
-/* Paper inside Paper (the "inner cubes") */
-body.light-mode .MuiPaper-root .MuiPaper-root {
-  background: var(--paper-bg-inner) !important;
-  background-color: var(--paper-bg-inner) !important;
-  --Paper-overlay: none !important;
-  background-image: none !important;
 }

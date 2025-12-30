@@ -4,17 +4,32 @@ export const api = axios.create({
     baseURL: "http://localhost:8000",
 });
 
+// --- Helper: read token from auth ---
+function getToken() {
+    try {
+        const raw = localStorage.getItem("auth");
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        return parsed?.token || null;
+    } catch {
+        return null;
+    }
+}
+
 // --- Load token on page load ---
-const saved = localStorage.getItem("token");
-if (saved) {
-    api.defaults.headers.common["Authorization"] = `Bearer ${saved}`;
+const token = getToken();
+if (token) {
+    api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 }
 
 // --- Inject token before every request ---
 api.interceptors.request.use((config) => {
-    const token = localStorage.getItem("token");
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+    const t = getToken();
+    if (t) {
+        config.headers.Authorization = `Bearer ${t}`;
+    } else {
+        // חשוב: לנקות אם אין טוקן, כדי לא לשלוח "ghost header"
+        delete config.headers.Authorization;
     }
     return config;
 });

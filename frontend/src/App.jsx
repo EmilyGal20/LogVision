@@ -1,56 +1,70 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { useEffect } from "react";
+import "./App.css";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { useMemo, useEffect } from "react";
 
+// pages
 import Dashboard from "./pages/Dashboard";
 import Logs from "./pages/Logs";
 import SearchIP from "./pages/SearchIP";
-// import Admin from "./pages/Admin";
 import AdminPanel from "./pages/AdminPanel";
 import Profile from "./pages/Profile";
 import HardwareLogs from "./pages/HardwareLogs";
 import IssueDetails from "./pages/IssueDetails";
 import RealTimeIP from "./pages/RealTimeIP";
-// import CreateLog from "./pages/CreateLog";
 
-import OSFrame from "./components/OSFrame";
-import BrowserWindow from "./components/BrowserWindow";
+// layout (בשלב הבא נשדרג אותו ל-Twitch style)
+import Layout from "./components/Layout";
+
+// theme
+import { createTheme, ThemeProvider } from "@mui/material/styles";
+import { useThemeMode } from "./context/ThemeContext";
 
 export default function App() {
+    const { mode } = useThemeMode();
 
+    // Sync body class (dark / light)
     useEffect(() => {
-        document.body.className = "dark";
-    }, []);
+        // document.body.className = mode;
+        document.body.className = mode === "light" ? "light-mode" : "dark";
+
+    }, [mode]);
+
+    // MUI Theme (שומר צבעים)
+    const theme = useMemo(
+        () =>
+            createTheme({
+                palette: {
+                    mode,
+                    primary: { main: "#7c3aed" },
+                    secondary: { main: "#06b6d4" },
+                },
+            }),
+        [mode]
+    );
 
     return (
         <BrowserRouter>
-            <Routes>
-                {/* 🖥️ OS + Browser wrapper */}
-                <Route
-                    path="/"
-                    element={
-                        <OSFrame>
-                            <BrowserWindow />
-                        </OSFrame>
-                    }
-                >
-                    {/* Default page */}
-                    <Route index element={<Dashboard />} />
+            <ThemeProvider theme={theme}>
+                <Routes>
+                    {/* Shell חדש במקום OS/Browser */}
+                    <Route path="/" element={<Layout />}>
+                        <Route index element={<Navigate to="/dashboard" replace />} />
 
-                    {/* Explicit routes */}
-                    <Route path="dashboard" element={<Dashboard />} />
-                    <Route path="logs" element={<Logs />} />
-                    <Route path="search" element={<SearchIP />} />
-                    {/* <Route path="admin" element={<Admin />} /> */}
-                    <Route path="admin" element={<AdminPanel />} />
+                        <Route path="dashboard" element={<Dashboard />} />
+                        <Route path="logs" element={<Logs />} />
+                        <Route path="search" element={<SearchIP />} />
+                        <Route path="admin" element={<AdminPanel />} />
 
-                    <Route path="profile" element={<Profile />} />
-                    <Route path="hardware" element={<HardwareLogs />} />
-                    <Route path="issue/:id" element={<IssueDetails />} />
-                    <Route path="realtime" element={<RealTimeIP />} />
-                    {/* <Route path="/logs/new" element={<CreateLog />} /> */}
+                        <Route path="profile" element={<Profile />} />
+                        <Route path="hardware" element={<HardwareLogs />} />
+                        <Route path="issue/:id" element={<IssueDetails />} />
+                        <Route path="realtime" element={<RealTimeIP />} />
 
-                </Route>
-            </Routes>
+                        {/* fallback */}
+                        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                    </Route>
+                </Routes>
+            </ThemeProvider>
         </BrowserRouter>
     );
 }

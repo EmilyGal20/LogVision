@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import Optional, List
+from auth_dependencies import require_user, require_admin
 
 from database import SessionLocal
 from models import Log
@@ -68,7 +69,7 @@ def get_logs(db: Session = Depends(get_db)) -> List[LogOut]:
 # =====================================================================
 # CREATE NEW LOG
 # =====================================================================
-@router.post("/", response_model=LogRead)
+@router.post("/", response_model=LogRead, dependencies=[Depends(require_user)])
 def create_log(log: LogCreate, db: Session = Depends(get_db)):
     db_log = Log(**log.dict())
     db.add(db_log)
@@ -124,7 +125,7 @@ def get_hardware_logs(
 # =====================================================================
 # RESOLVE LOG
 # =====================================================================
-@router.put("/resolve/{log_id}", response_model=LogRead)
+@router.put("/resolve/{log_id}", response_model=LogRead, dependencies=[Depends(require_user)])
 def resolve_log(log_id: int, db: Session = Depends(get_db)):
     log = db.query(Log).filter(Log.id == log_id).first()
 
@@ -166,8 +167,9 @@ def get_log(log_id: str, db: Session = Depends(get_db)):
 # =====================================================================
 # DELETE LOG
 # =====================================================================
-@router.delete("/{log_id}")
+@router.delete("/{log_id}", dependencies=[Depends(require_admin)])
 def delete_log(log_id: int, db: Session = Depends(get_db)):
+
     log = db.query(Log).filter(Log.id == log_id).first()
 
     if not log:

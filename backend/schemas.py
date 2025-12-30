@@ -126,28 +126,28 @@ class DeviceOut(BaseModel):
 # ============================================================
 
 class AlertCreate(BaseModel):
-    title: str              # old: 'type'
-    description: str        # old: 'message'
-    severity: str           # "Critical", "Medium", "Low"
-    device_ip: str
+    type: str
+    message: str
+    severity: str  # info / warning / critical (או מה שאת משתמשת בפועל)
+    device_ip: Optional[str] = None
 
 
 class AlertOut(BaseModel):
     id: int
-    title: str
-    description: str
+    type: str
+    message: str
     severity: str
-    device_ip: str
-    timestamp: datetime
-    resolved: bool
+    device_ip: Optional[str] = None
+    created_at: datetime
+    acknowledged: bool
 
     class Config:
         orm_mode = True
 
-
 # ============================================================
 # SETTINGS SCHEMAS (Final Clean Version)
 # ============================================================
+
 
 class SettingUpdate(BaseModel):
     key: str

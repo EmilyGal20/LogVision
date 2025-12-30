@@ -2,32 +2,33 @@ import subprocess
 import platform
 import time
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta
 from queue import Queue
 
 from database import SessionLocal
 from models import MonitorHistory, UptimeHistory
 
-
+RETENTION_DAYS = 30
+CLEANUP_EVERY_N_WRITES = 200
 # ============================================================
 #   GLOBAL LIVE STORAGE
 # ============================================================
 
-monitoring_results = {}          # נתונים חיים ל־React
-stop_flags = {}                  # עצירה ידנית ל־IP
-active_threads = {}              # ניטור ONLINE/LATENCY
-active_uptime_threads = {}       # ניטור UPTIME
+monitoring_results = {}
+stop_flags = {}
+active_threads = {}
+active_uptime_threads = {}
 
-db_queue = Queue()               # תור כתיבה — כל הכתיבה ל-DB עוברת דרכו
+db_queue = Queue(maxsize=5000)
 
 
 # ============================================================
-#   DATABASE WRITER THREAD — הפתרון ל-database locked
+#   DATABASE WRITER THREAD — database locked
 # ============================================================
 
 def db_writer():
-    """Thread יחיד שמקבל את כל פעולות השמירה ומבצע commit בתור."""
     print("[DB WRITER] Started")
+    writes = 0
 
     while True:
         try:
@@ -36,8 +37,18 @@ def db_writer():
             db = SessionLocal()
             db.add(model_instance)
             db.commit()
-            db.close()
 
+            writes += 1
+
+            if writes % CLEANUP_EVERY_N_WRITES == 0:
+                cutoff = datetime.utcnow() - timedelta(days=RETENTION_DAYS)
+                db.query(MonitorHistory).filter(
+                    MonitorHistory.timestamp < cutoff).delete()
+                db.query(UptimeHistory).filter(
+                    UptimeHistory.timestamp < cutoff).delete()
+                db.commit()
+
+            db.close()
             db_queue.task_done()
 
         except Exception as e:
@@ -45,13 +56,12 @@ def db_writer():
             time.sleep(0.1)
 
 
-# מפעילים את כותב ה-DB פעם אחת בלבד
 writer_thread = threading.Thread(target=db_writer, daemon=True)
 writer_thread.start()
 
 
 # ============================================================
-#   פונקציית פינג (תומך Windows / Linux)
+#  ping func (Windows / Linux)
 # ============================================================
 
 def ping_ip(ip):
@@ -78,7 +88,7 @@ def ping_ip(ip):
 
 
 # ============================================================
-#   ניטור LATENCY + ONLINE
+#   LATENCY + ONLINE
 # ============================================================
 
 def monitor_ip(ip):
@@ -99,23 +109,25 @@ def monitor_ip(ip):
             "timestamp": time.time()
         }
 
-        # במקום commit — דוחפים את אובייקט ה-DB לתור
-        db_queue.put(
-            MonitorHistory(
-                ip=ip,
-                online=alive,
-                latency=latency if latency is not None else 0,
-                packet_loss=0.0,   # כרגע אין חישוב packet loss – אפשר להוסיף בעתיד
-                jitter=0.0,        # כרגע אין חישוב jitter – אפשר להוסיף בעתיד
-                timestamp=datetime.utcnow()
+        try:
+            db_queue.put_nowait(
+                MonitorHistory(
+                    ip=ip,
+                    online=alive,
+                    latency=latency if latency is not None else 0,
+                    packet_loss=0.0,
+                    jitter=0.0,
+                    timestamp=datetime.utcnow()
+                )
             )
-        )
+        except:
+            pass
 
         time.sleep(5)
 
 
 # ============================================================
-#   ניטור UPTIME — כל 5 דקות
+#   UPTIME every 5 min
 # ============================================================
 
 def calculate_daily_uptime(ip):
@@ -129,20 +141,22 @@ def calculate_daily_uptime(ip):
         logs = monitoring_results.get(ip, {"online": False})
         uptime_percent = 100 if logs["online"] else 0
 
-        # דוחפים את ההיסטוריה לתור
-        db_queue.put(
-            UptimeHistory(
-                ip=ip,
-                uptime_percent=uptime_percent,
-                timestamp=datetime.utcnow()
+        try:
+            db_queue.put_nowait(
+                UptimeHistory(
+                    ip=ip,
+                    uptime_percent=uptime_percent,
+                    timestamp=datetime.utcnow()
+                )
             )
-        )
+        except:
+            pass
 
-        time.sleep(300)  # 5 דקות
+        time.sleep(300)
 
 
 # ============================================================
-#   התחלת ניטור
+#   start monitoring
 # ============================================================
 
 def start_monitoring(ip):
@@ -154,13 +168,11 @@ def start_monitoring(ip):
     if ip in active_uptime_threads and not active_uptime_threads[ip].is_alive():
         del active_uptime_threads[ip]
 
-    # ניטור Latency
     if ip not in active_threads:
         t = threading.Thread(target=monitor_ip, args=(ip,), daemon=True)
         t.start()
         active_threads[ip] = t
 
-    # ניטור Uptime
     if ip not in active_uptime_threads:
         t2 = threading.Thread(
             target=calculate_daily_uptime, args=(ip,), daemon=True)
@@ -169,7 +181,7 @@ def start_monitoring(ip):
 
 
 # ============================================================
-#   עצירת ניטור
+#    stop monitoring
 # ============================================================
 
 def stop_monitoring(ip):
@@ -178,7 +190,7 @@ def stop_monitoring(ip):
 
 
 # ============================================================
-#   מידע לריאקט (WebSocket)
+#   info for the app (WebSocket)
 # ============================================================
 
 def get_realtime_data(ip):

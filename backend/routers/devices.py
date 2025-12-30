@@ -73,7 +73,7 @@ def create_device(data: DeviceCreate, db: Session = Depends(get_db)):
 # ============================================================
 # UPDATE DEVICE (Admin or Agent)
 # ============================================================
-@router.put("/{ip}", response_model=DeviceOut)
+@router.put("/{ip}", response_model=DeviceOut, dependencies=[Depends(require_admin)])
 def update_device(ip: str, data: DeviceUpdate, db: Session = Depends(get_db)):
     device = db.query(Device).filter(Device.ip == ip).first()
 
@@ -150,7 +150,7 @@ def diagnostics(ip: str, db: Session = Depends(get_db)):
 # ============================================================
 # UPDATE HEALTH (Agent → Backend)
 # ============================================================
-@router.put("/{ip}/health", response_model=DeviceOut)
+@router.put("/{ip}/health", response_model=DeviceOut, dependencies=[Depends(require_admin)])
 def update_health(ip: str, health: dict, db: Session = Depends(get_db)):
     """Used by monitoring agent or WS."""
     device = db.query(Device).filter(Device.ip == ip).first()
