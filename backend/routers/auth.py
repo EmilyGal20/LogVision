@@ -70,8 +70,9 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     if db.query(User).filter(User.username == user.username).first():
         raise HTTPException(400, "Username already taken")
 
-    if db.query(User).filter(User.email == user.email).first():
-        raise HTTPException(400, "Email already registered")
+    if user.email:
+        if db.query(User).filter(User.email == user.email).first():
+            raise HTTPException(400, "Email already registered")
 
     hashed = bcrypt.hashpw(user.password.encode(), bcrypt.gensalt()).decode()
 

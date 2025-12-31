@@ -10,8 +10,8 @@ from typing import Optional, Dict, List, Any
 class UserCreate(BaseModel):
     username: str
     password: str
-    full_name: str
-    email: str
+    full_name: Optional[str] = None
+    email: Optional[str] = None
 
 
 class UserUpdate(BaseModel):
@@ -23,8 +23,8 @@ class UserUpdate(BaseModel):
 class UserOut(BaseModel):
     id: int
     username: str
-    full_name: str
-    email: str
+    full_name: Optional[str] = None
+    email: Optional[str] = None
     role: str
 
     class Config:

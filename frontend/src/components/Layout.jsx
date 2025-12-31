@@ -311,6 +311,7 @@ export default function Layout() {
                         overflow: "auto",
                         px: { xs: 1.25, md: 2 },
                         pb: { xs: 2.5, md: 3 },
+                        background: "transparent", // או "var(--bg-main)"
 
 
                     }}

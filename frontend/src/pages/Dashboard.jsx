@@ -255,13 +255,66 @@ export default function Dashboard() {
             </Box>
 
             {/* TOP CARDS */}
-            <Box display="grid" gridTemplateColumns="repeat(3, 1fr)" gap={5} mb={6} >
+            <Box
+                display="grid"
+                gridTemplateColumns={{
+                    xs: "1fr",          // 📱 מובייל — כרטיס אחד בשורה
+                    sm: "repeat(2, 1fr)", // 📱 טאבלט — 2 כרטיסים
+                    md: "repeat(3, 1fr)", // 💻 דסקטופ — 3 כרטיסים
+                }}
+                gap={{ xs: 3, md: 5 }}
+                mb={6}
+            >
                 <StatCard title="Total Errors" value={logs.length} color="#ef4444" onClick={() => navigate("/logs?filter=all")} />
                 <StatCard title="Unique IPs" value={uniqueIPs} color="#3b82f6" onClick={() => navigate("/logs")} />
-                <Paper sx={{ padding: 3, borderRadius: 4, background: bgCard, cursor: "pointer", maxWidth: 250, maxHeight: 300 }} onClick={() => navigate("/logs")}>
-                    <Typography mb={1} sx={{ color: textPrimary }}>Severity Breakdown</Typography>
-                    <Doughnut data={severityData} />
+                <Paper
+                    sx={{
+                        p: 3,
+                        borderRadius: 4,
+                        background: bgCard,
+                        cursor: "pointer",
+                        // maxWidth: 250,
+                        // maxHeight: 300,
+                        minHeight: 260,
+                        width: "100%",
+                        overflow: "hidden",
+                    }}
+                    onClick={() => navigate("/logs")}
+                >
+                    <Typography mb={1} sx={{ color: textPrimary }}>
+                        Severity Breakdown
+                    </Typography>
+
+                    <Box
+                        sx={{
+                            position: "relative",
+                            width: "100%",
+                            height: { xs: 220, sm: 200 }, // 👈 במובייל גבוה יותר
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                        }}
+                    >
+                        <Doughnut
+                            data={severityData}
+                            options={{
+                                responsive: true,
+                                maintainAspectRatio: false, // 👈 חובה עם height
+                                plugins: {
+                                    legend: {
+                                        position: "bottom",     // 👈 הרבה יותר טוב במובייל
+                                        labels: {
+                                            boxWidth: 12,
+                                            padding: 10,
+                                        },
+                                    },
+                                },
+                                layout: { padding: 6 },
+                            }}
+                        />
+                    </Box>
                 </Paper>
+
             </Box>
 
             {/* CATEGORY BAR CHART */}

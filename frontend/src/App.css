@@ -60,27 +60,41 @@
 } */
 
 /* =========================================================
-   DARK BACKGROUND FIX (PUT LAST IN index.css)
+   DARK MODE — GHOST PALETTE (PUT IN App.css)
+   (black / crimson / antique gold — subtle)
 ========================================================= */
 
+/* =========================================================
+   DARK BACKGROUND FIX
+========================================================= */
 body.dark {
-  --bg-main: #070a12;
-  /* זה מה שהLayout משתמש בו */
+  --bg-main: #0a0a0a;
+  /* Black Abyss */
+
 }
 
 /* ensure the entire app canvas is dark */
 body.dark,
 body.dark html,
 body.dark #root {
-  background: #070a12 !important;
+  background:
+    radial-gradient(circle at 20% 12%, rgba(201, 165, 95, 0.08), transparent 55%),
+    radial-gradient(circle at 80% 78%, rgba(182, 72, 82, 0.10), transparent 58%),
+    radial-gradient(circle at 55% 45%, rgba(255, 255, 255, 0.03), transparent 62%),
+    linear-gradient(180deg, #070707 0%, #0a0a0a 40%, #0c0c0c 100%) !important;
+  background-attachment: fixed !important;
+  background-repeat: no-repeat !important;
+  background-size: cover !important;
+
 }
+
 
 /* if MUI sets body background via theme */
 body.dark .MuiCssBaseline-root {
-  background: #070a12 !important;
+  background: #0a0a0a !important;
 }
 
-/* soft purple glow layer */
+/* soft "smoke + ritual" glow layer (gold + crimson) */
 body.dark::before {
   content: "";
   position: fixed;
@@ -88,8 +102,12 @@ body.dark::before {
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(circle at 30% 20%, rgba(124, 58, 237, 0.20), transparent 60%),
-    radial-gradient(circle at 75% 70%, rgba(139, 92, 246, 0.16), transparent 62%);
+    radial-gradient(circle at 28% 18%, rgba(201, 165, 95, 0.10), transparent 62%),
+    radial-gradient(circle at 75% 72%, rgba(182, 72, 82, 0.12), transparent 64%),
+    radial-gradient(circle at 55% 40%, rgba(255, 255, 255, 0.03), transparent 60%),
+    linear-gradient(120deg, rgba(255, 255, 255, 0.02), transparent 60%);
+  /* NEW */
+
 }
 
 #root {
@@ -98,42 +116,67 @@ body.dark::before {
 }
 
 /* ============================================================
-   PAPERS / CARDS — dark, readable, purple as accent only
+   PAPERS / CARDS — dark, readable, gold edge + tiny crimson hint
 ============================================================ */
 body.dark .MuiPaper-root,
 body.dark .card {
-  background: rgba(16, 20, 34, 0.92) !important;
-  background-color: rgba(16, 20, 34, 0.92) !important;
+  background: rgba(18, 18, 18, 0.88) !important;
+  /* Charred Black */
+  background-color: rgba(18, 18, 18, 0.88) !important;
   --Paper-overlay: none !important;
   background-image: none !important;
 
   border-radius: 16px !important;
-  border: 1px solid rgba(139, 92, 246, 0.16) !important;
+  border: 1px solid rgba(201, 165, 95, 0.20) !important;
+  /* Sacred Gold */
 
   backdrop-filter: blur(10px) saturate(1.05);
   -webkit-backdrop-filter: blur(10px) saturate(1.05);
+  position: relative;
+  overflow: hidden;
 
   box-shadow:
-    0 0 0 1px rgba(139, 92, 246, 0.10),
-    0 14px 34px rgba(0, 0, 0, 0.65) !important;
+    0 0 0 1px rgba(201, 165, 95, 0.10),
+    0 14px 34px rgba(0, 0, 0, 0.70) !important;
 
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 body.dark .MuiPaper-root:hover {
   transform: translateY(-2px);
+  border-color: rgba(182, 72, 82, 0.22) !important;
+  /* Crimson Ritual */
   box-shadow:
-    0 0 0 1px rgba(167, 139, 250, 0.22),
-    0 18px 44px rgba(0, 0, 0, 0.72) !important;
+    0 0 0 1px rgba(182, 72, 82, 0.12),
+    0 18px 44px rgba(0, 0, 0, 0.78) !important;
+}
+
+ody.dark .MuiPaper-root::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 30% 20%, rgba(201, 165, 95, 0.06), transparent 55%),
+    radial-gradient(circle at 80% 70%, rgba(182, 72, 82, 0.06), transparent 58%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 35%);
+  opacity: 0.9;
 }
 
 /* nested paper stays slightly different */
 body.dark .MuiPaper-root .MuiPaper-root {
-  background: rgba(20, 24, 40, 0.92) !important;
+  background: rgba(28, 28, 28, 0.88) !important;
+  border: 1px solid rgba(201, 165, 95, 0.14) !important;
+}
+
+body.dark .MuiIconButton-root:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(201, 165, 95, 0.35);
 }
 
 /* ============================================================
-   TYPOGRAPHY — crisp, no neon glow
+   TYPOGRAPHY — crisp, warm light (candle), no neon glow
 ============================================================ */
 body.dark h1,
 body.dark h2,
@@ -141,61 +184,118 @@ body.dark h3,
 body.dark h4,
 body.dark h5,
 body.dark h6 {
-  color: #eef2ff;
+  color: #f2f2f2;
+  /* Ash White */
   text-shadow: none;
 }
 
 body.dark .MuiTypography-root {
-  color: rgba(229, 231, 235, 0.92) !important;
+  color: rgba(242, 242, 242, 0.90) !important;
+}
+
+/* Optional: subtle secondary text tone */
+body.dark .MuiTypography-body2 {
+  color: rgba(242, 242, 242, 0.72) !important;
+}
+
+body.dark h1::after,
+body.dark h2::after {
+  content: "";
+  display: block;
+  width: 52px;
+  height: 1px;
+  margin-top: 6px;
+  background: linear-gradient(90deg,
+      transparent,
+      rgba(201, 165, 95, 0.85),
+      transparent);
+}
+
+body.dark .MuiDivider-root {
+  border-color: rgba(201, 165, 95, 0.16) !important;
+  opacity: 0.9;
 }
 
 /* ============================================================
-   INPUTS — dark and clear
+   INPUTS — dark glass, gold border, crimson focus
 ============================================================ */
 body.dark .MuiInputBase-root {
-  background: rgba(255, 255, 255, 0.06) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
   border-radius: 10px;
-  color: #e5e7eb !important;
+  color: rgba(242, 242, 242, 0.92) !important;
   backdrop-filter: blur(8px);
 }
 
 body.dark .MuiOutlinedInput-notchedOutline {
-  border-color: rgba(139, 92, 246, 0.26) !important;
+  border-color: rgba(201, 165, 95, 0.24) !important;
+  /* gold */
 }
 
 body.dark .MuiInputLabel-root {
-  color: rgba(229, 231, 235, 0.65) !important;
+  color: rgba(242, 242, 242, 0.62) !important;
 }
 
 body.dark input::placeholder {
-  color: rgba(229, 231, 235, 0.55) !important;
+  color: rgba(242, 242, 242, 0.50) !important;
   opacity: 1 !important;
 }
 
+/* Focus = ritual crimson ring */
+body.dark .MuiInputBase-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: rgba(182, 72, 82, 0.50) !important;
+  box-shadow: 0 0 0 2px rgba(182, 72, 82, 0.14);
+}
+
 /* ============================================================
-   BUTTONS — soft purple, not neon
+   BUTTONS — crimson → gold, still subtle
 ============================================================ */
 body.dark .MuiButton-contained {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+  background: linear-gradient(135deg, #b64852, #c9a55f) !important;
   color: #fff !important;
-  box-shadow: 0 8px 22px rgba(124, 58, 237, 0.32);
+  box-shadow: 0 8px 22px rgba(182, 72, 82, 0.22);
 }
 
 body.dark .MuiButton-contained:hover {
-  box-shadow: 0 12px 30px rgba(167, 139, 250, 0.40);
+  box-shadow: 0 12px 30px rgba(201, 165, 95, 0.20);
   transform: translateY(-1px);
 }
 
 body.dark .MuiButton-outlined {
-  border-color: rgba(167, 139, 250, 0.50) !important;
-  color: #c7d2fe !important;
+  border-color: rgba(201, 165, 95, 0.42) !important;
+  color: rgba(242, 242, 242, 0.88) !important;
+}
+
+body.dark .MuiButton-outlined:hover {
+  border-color: rgba(182, 72, 82, 0.42) !important;
+  background: rgba(182, 72, 82, 0.08) !important;
+}
+
+body.dark a:hover,
+body.dark .MuiIconButton-root:hover {
+  color: #b64852 !important;
+}
+
+/* ============================================================
+   TABLES / ROW HOVER / CHIPS — gold hover, crimson hint
+============================================================ */
+body.dark .MuiTableRow-root:hover {
+  background:
+    linear-gradient(90deg, rgba(201, 165, 95, 0.10), rgba(182, 72, 82, 0.07)) !important;
+}
+
+
+body.dark .MuiChip-root {
+  background: rgba(201, 165, 95, 0.14) !important;
+  border: 1px solid rgba(201, 165, 95, 0.28) !important;
+  color: rgba(242, 242, 242, 0.90) !important;
+  font-weight: 600;
 }
 
 /* ============================================================
    CHARTS / SCROLLBAR
 ============================================================ */
 body.dark canvas {
-  filter: drop-shadow(0px 0px 10px rgba(139, 92, 246, 0.22));
+  filter: drop-shadow(0px 0px 10px rgba(201, 165, 95, 0.14));
 }
 
 body.dark::-webkit-scrollbar {
@@ -203,13 +303,15 @@ body.dark::-webkit-scrollbar {
 }
 
 body.dark::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(109, 40, 217, 0.9), rgba(59, 130, 246, 0.9));
+  background: linear-gradient(180deg, rgba(201, 165, 95, 0.70), rgba(182, 72, 82, 0.70));
   border-radius: 10px;
 }
 
 body.dark::-webkit-scrollbar-track {
   background: rgba(255, 255, 255, 0.05);
 }
+
+
 
 /* ============================================================
    OPTIONAL: If you still use these classes
