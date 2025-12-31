@@ -21,27 +21,29 @@ body {
    THEME VARIABLES (defaults)
 ========================================================= */
 :root {
-  --bg-main: #f6f8fb;
+  /* Background base (lavender-white) */
+  --bg-main: #f7f4ff;
 
   /* Text */
-  --text-primary: #0f172a;
-  --text-color: #111827;
+  --text-primary: #1a1333;
+  --text-color: #241b40;
 
-  /* Accent */
-  --accent: #4aa9ff;
+  /* Accent (soft purple) */
+  --accent: #8b5cf6;
 
-  /* Hover / Active */
-  --item-hover: rgba(15, 23, 42, 0.06);
-  --item-active: rgba(99, 102, 241, 0.20);
+  /* Hover / Active (purple tint) */
+  --item-hover: rgba(139, 92, 246, 0.08);
+  --item-active: rgba(139, 92, 246, 0.18);
 
   /* Sidebar */
-  --sidebar-bg: #ffffff;
-  --sidebar-border: rgba(99, 102, 241, 0.12);
+  --sidebar-bg: rgba(255, 255, 255, 0.92);
+  --sidebar-border: rgba(139, 92, 246, 0.14);
 
   /* Paper */
-  --paper-bg: rgba(255, 255, 255, 0.94);
-  --paper-bg-inner: rgba(248, 250, 252, 0.96);
+  --paper-bg: rgba(255, 255, 255, 0.92);
+  --paper-bg-inner: rgba(252, 250, 255, 0.96);
 }
+
 
 /* =========================================================
    LIGHT MODE (support both body.light-mode and body.light)
@@ -54,15 +56,15 @@ body.light {
 
 body.light-mode,
 body.light {
-  /* main background */
   background:
-    radial-gradient(circle at 20% 15%, rgba(139, 92, 246, 0.18), transparent 45%),
-    radial-gradient(circle at 80% 65%, rgba(99, 102, 241, 0.16), transparent 50%),
-    linear-gradient(180deg, #f5f7fb, #e8edf6 70%) !important;
+    radial-gradient(circle at 18% 12%, rgba(168, 85, 247, 0.18), transparent 50%),
+    radial-gradient(circle at 82% 70%, rgba(139, 92, 246, 0.14), transparent 55%),
+    linear-gradient(180deg, #fbfaff, #f0ecff 72%) !important;
   background-attachment: fixed !important;
   background-size: cover !important;
   background-repeat: no-repeat !important;
 }
+
 
 /* Soft glow layer */
 body.light-mode #root::before,
@@ -73,8 +75,8 @@ body.light #root::before {
   pointer-events: none;
   z-index: -1;
   background:
-    radial-gradient(circle at 30% 20%, rgba(139, 92, 246, 0.18), transparent 55%),
-    radial-gradient(circle at 75% 70%, rgba(99, 102, 241, 0.15), transparent 60%);
+    radial-gradient(circle at 28% 18%, rgba(168, 85, 247, 0.16), transparent 60%),
+    radial-gradient(circle at 75% 72%, rgba(139, 92, 246, 0.12), transparent 62%);
 }
 
 /* =========================================================
@@ -94,16 +96,18 @@ body.light .MuiPaper-root {
   border: none !important;
 
   box-shadow:
-    0 0 0 1px rgba(99, 102, 241, 0.14),
-    0 10px 22px rgba(15, 23, 42, 0.10) !important;
+    0 0 0 1px rgba(139, 92, 246, 0.16),
+    0 12px 26px rgba(30, 16, 60, 0.10) !important;
+
 }
 
 body.light-mode .MuiPaper-root:hover,
 body.light .MuiPaper-root:hover {
   transform: translateY(-1px);
   box-shadow:
-    0 0 0 1px rgba(99, 102, 241, 0.18),
-    0 14px 28px rgba(15, 23, 42, 0.14) !important;
+    0 0 0 1px rgba(139, 92, 246, 0.20),
+    0 16px 32px rgba(30, 16, 60, 0.14) !important;
+
 }
 
 /* Paper inside Paper (inner cards) */
@@ -165,7 +169,7 @@ body.light .MuiInputBase-root {
 
 body.light-mode .MuiOutlinedInput-notchedOutline,
 body.light .MuiOutlinedInput-notchedOutline {
-  border-color: rgba(99, 102, 241, 0.24) !important;
+  border-color: rgba(139, 92, 246, 0.26) !important;
 }
 
 body.light-mode .MuiInputLabel-root,
@@ -175,8 +179,9 @@ body.light .MuiInputLabel-root {
 
 body.light-mode .MuiInputBase-root.Mui-focused .MuiOutlinedInput-notchedOutline,
 body.light .MuiInputBase-root.Mui-focused .MuiOutlinedInput-notchedOutline {
-  border-color: rgba(99, 102, 241, 0.45) !important;
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.12);
+  border-color: rgba(139, 92, 246, 0.48) !important;
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.14);
+
 }
 
 /* Placeholder */
@@ -236,4 +241,50 @@ body.light-mode::-webkit-scrollbar-thumb,
 body.light::-webkit-scrollbar-thumb {
   background: linear-gradient(180deg, #a78bfa, #6366f1);
   border-radius: 10px;
+}
+
+/* =========================================================
+   FORCE LIGHT MODE CONTRAST (beats MUI sx/emotion)
+   PUT THIS AS THE VERY LAST THING IN index.css
+========================================================= */
+
+body.light-mode .MuiPaper-root.MuiPaper-root,
+body.light .MuiPaper-root.MuiPaper-root {
+  background: rgba(255, 255, 255, 0.96) !important;
+  background-color: rgba(255, 255, 255, 0.96) !important;
+  --Paper-overlay: none !important;
+  background-image: none !important;
+
+  backdrop-filter: blur(6px) saturate(1.02) !important;
+  -webkit-backdrop-filter: blur(6px) saturate(1.02) !important;
+
+  box-shadow:
+    0 0 0 1px rgba(139, 92, 246, 0.18),
+    0 12px 28px rgba(30, 16, 60, 0.12) !important;
+
+  border-right: 1px solid rgba(139, 92, 246, 0.16) !important;
+
+}
+
+/* Sidebar (Drawer) */
+body.light-mode .MuiDrawer-paper.MuiDrawer-paper,
+body.light .MuiDrawer-paper.MuiDrawer-paper {
+  background: rgba(255, 255, 255, 0.95) !important;
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
+  border-right: 1px solid rgba(99, 102, 241, 0.14) !important;
+}
+
+/* Make text NOT washed out */
+body.light-mode .MuiTypography-root,
+body.light .MuiTypography-root {
+  color: #0f172a !important;
+  text-shadow: none !important;
+}
+
+/* Inputs clearer */
+body.light-mode .MuiInputBase-root,
+body.light .MuiInputBase-root {
+  background: rgba(248, 250, 252, 0.96) !important;
 }
