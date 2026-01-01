@@ -277,7 +277,7 @@ body.light .MuiChip-root {
 /* =========================================================
    SCROLLBAR
 ========================================================= */
-body.light-mode::-webkit-scrollbar,
+/* body.light-mode::-webkit-scrollbar,
 body.light::-webkit-scrollbar {
   width: 8px;
 }
@@ -286,7 +286,21 @@ body.light-mode::-webkit-scrollbar-thumb,
 body.light::-webkit-scrollbar-thumb {
   background: linear-gradient(180deg, #c9a55f, #b64852);
   border-radius: 10px;
+} */
+
+.app-scroll::-webkit-scrollbar {
+  width: 8px;
 }
+
+.app-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #c9a55f, #b64852);
+  border-radius: 10px;
+}
+
+.app-scroll::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.06);
+}
+
 
 /* =========================================================
    FORCE LIGHT MODE CONTRAST (beats MUI sx/emotion)

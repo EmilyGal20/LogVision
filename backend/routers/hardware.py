@@ -1,10 +1,18 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
 import json
 from pathlib import Path
 from auth_dependencies import require_admin
 import uuid
+import random
+import asyncio
+
+# ✅ NEW: only allow real IPv4 in the URL + real hardware metrics (server machine)
+from ipaddress import IPv4Address
+import psutil
+
 
 router = APIRouter(prefix="/hardware", tags=["Hardware Errors"])
+# router = APIRouter(prefix="/hardware", tags=["hardware"])
 
 DB_FILE = Path("hardware_errors.json")
 
@@ -27,6 +35,15 @@ def save_db(data):
     """Save hardware errors JSON file"""
     with open(DB_FILE, "w", encoding="utf8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
+
+
+# ✅ NEW: live metrics helper (REAL - of the server running FastAPI)
+def get_live_metrics():
+    # NOTE: these are real metrics of THIS server machine (not remote IP machines)
+    cpu = float(psutil.cpu_percent(interval=0.15))
+    ram = float(psutil.virtual_memory().percent)
+    disk = float(psutil.disk_usage("/").percent)
+    return cpu, ram, disk
 
 
 # ==========================================================
@@ -134,3 +151,60 @@ def delete_error(error_id: str):
     save_db(new_db)
 
     return {"ok": True, "deleted": deleted}
+
+
+# ==========================================================
+# ✅ REAL HARDWARE METRICS (only accept real IPv4)
+#   URL stays the same: GET /hardware/<ip>
+# ==========================================================
+@router.get("/{ip}")
+def get_hardware(ip: IPv4Address):
+    ip = str(ip)  # keep response identical type
+    cpu, ram, disk = get_live_metrics()
+
+    # ping: keep existing shape; "real ping" needs ICMP permissions/extra tooling
+    ping = random.randint(1, 120)
+
+    return {
+        "ip": ip,
+        "cpu": cpu,
+        "ram": ram,
+        "disk": disk,
+        "ping": ping,
+        "status": "OK",
+    }
+
+
+# ==========================================================
+# ✅ LIVE WS (only accept real IPv4)
+#   NOTE: because router has prefix="/hardware",
+#   WS URL becomes: /hardware/ws/hardware/<ip>
+# ==========================================================
+@router.websocket("/ws/hardware/{ip}")
+async def hardware_ws(ws: WebSocket, ip: str):
+    # validate IPv4 manually for WS (so we don't stream for invalid inputs)
+    try:
+        ip = str(IPv4Address(ip))
+    except Exception:
+        await ws.accept()
+        await ws.send_json({"error": "Invalid IPv4 address"})
+        await ws.close()
+        return
+
+    await ws.accept()
+    try:
+        while True:
+            cpu, ram, disk = get_live_metrics()
+            ping = random.randint(1, 120)
+
+            await ws.send_json({
+                "ip": ip,
+                "cpu": cpu,
+                "ram": ram,
+                "disk": disk,
+                "ping": ping,
+                "status": "OK",
+            })
+            await asyncio.sleep(2)
+    except WebSocketDisconnect:
+        pass

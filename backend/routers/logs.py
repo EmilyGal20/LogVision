@@ -81,12 +81,32 @@ def create_log(log: LogCreate, db: Session = Depends(get_db)):
 # =====================================================================
 # SEARCH LOGS
 # =====================================================================
+# @router.get("/search", response_model=List[LogOut])
+# def search_logs(
+#     ip: Optional[str] = None,
+#     error_type: Optional[str] = None,
+#     db: Session = Depends(get_db)
+# ):
+#     query = db.query(Log)
+
+#     if ip:
+#         query = query.filter(Log.ip.ilike(f"%{ip.strip()}%"))
+
+#     if error_type:
+#         query = query.filter(Log.error_type.ilike(f"%{error_type.strip()}%"))
+
+#     return query.order_by(Log.created_at.desc()).all()
+
+# =====================================================================
+# SEARCH LOGS (DB + JSON)
+# =====================================================================
 @router.get("/search", response_model=List[LogOut])
 def search_logs(
     ip: Optional[str] = None,
     error_type: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
+    # ---------- DB ----------
     query = db.query(Log)
 
     if ip:
@@ -95,12 +115,42 @@ def search_logs(
     if error_type:
         query = query.filter(Log.error_type.ilike(f"%{error_type.strip()}%"))
 
-    return query.order_by(Log.created_at.desc()).all()
+    db_logs = query.order_by(Log.created_at.desc()).all()
 
+    # ---------- JSON ----------
+    hw_logs = load_hw_logs()
+    json_logs = []
+
+    # אם אין ip בכלל, אין סיבה להחזיר JSON (כמו במסך שלך שמחייב IP)
+    if ip:
+        ip_str = ip.strip()
+
+        for item in hw_logs:
+            item_ip = str(item.get("ip", "")).strip()
+            item_type = str(item.get("error_type", "")).strip()
+
+            # match ip כמו ב-DB (contains)
+            if ip_str and ip_str not in item_ip:
+                continue
+
+            # filter error_type אם נבחר
+            if error_type and error_type.strip().lower() not in item_type.lower():
+                continue
+
+            new_item = item.copy()
+            new_item["id"] = f"json-{item.get('id')}"
+            new_item["source"] = "json"
+            new_item["status"] = new_item.get("status", "open")
+            json_logs.append(new_item)
+
+    # ---------- return combined ----------
+    return db_logs + json_logs
 
 # =====================================================================
 # HARDWARE LOG FILTER
 # =====================================================================
+
+
 @router.get("/hardware", response_model=List[LogOut])
 def get_hardware_logs(
     ip: Optional[str] = None,

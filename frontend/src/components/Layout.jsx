@@ -24,7 +24,10 @@ import MemoryIcon from "@mui/icons-material/Memory";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import MenuIcon from "@mui/icons-material/Menu";
 
+import LiveHardwarePanel from "./LiveHardwarePanel";
+
 import { useMediaQuery } from "@mui/material";
+import { useControlCenter } from "../context/ControlCenterContext";
 
 import { useState, useMemo } from "react";
 import { useThemeMode } from "../context/ThemeContext";
@@ -32,6 +35,8 @@ import { useThemeMode } from "../context/ThemeContext";
 export default function Layout() {
     const { mode } = useThemeMode();
     const location = useLocation();
+    const { setSelectedIP } = useControlCenter();
+    const [searchIP, setSearchIP] = useState("");
 
     // const [open, setOpen] = useState(true);
     // const toggleSidebar = () => setOpen((p) => !p);
@@ -146,7 +151,7 @@ export default function Layout() {
 
 
     return (
-        <Box sx={{ display: "flex", background: pageBg, minHeight: "100vh" }}>
+        <Box sx={{ display: "flex", background: pageBg, height: "100vh", overflow: "hidden", }}>
             {/* ===== SIDEBAR ===== */}
             {/* Desktop */}
             {!isMobile && (
@@ -165,6 +170,10 @@ export default function Layout() {
                                     : "1px solid rgba(150,170,200,0.35)",
                             overflowX: "hidden",
                             transition: "width 0.25s ease",
+
+
+
+
                         },
                     }}
                 >
@@ -201,7 +210,9 @@ export default function Layout() {
 
 
             {/* ===== CONTENT AREA (TOPBAR + MAIN) ===== */}
-            <Box sx={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+
+            <Box className="app-scroll"
+                sx={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "auto", }}>
                 {/* TOPBAR */}
                 <Paper
                     elevation={0}
@@ -224,6 +235,7 @@ export default function Layout() {
                         flexWrap: "wrap",
                         flexDirection: { xs: "column", sm: "row" },
                         justifyContent: { xs: "flex-start", sm: "space-between" },
+
                     }}
                 >
 
@@ -287,20 +299,23 @@ export default function Layout() {
 
                             <SearchIcon sx={{ color: textColor, opacity: 0.85 }} />
                             <TextField
-                                variant="standard"
-                                placeholder="Search IP / Computer / Error…"
-                                InputProps={{ disableUnderline: true }}
-                                sx={{
-                                    flex: 1,
-                                    minWidth: 0,
-                                    "& input": { color: textColor },
+                                value={searchIP}
+                                onChange={(e) => setSearchIP(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter" && searchIP) {
+                                        setSelectedIP(searchIP);
+                                    }
                                 }}
-
+                                placeholder="Search IP / Computer / Error…"
+                                variant="standard"
+                                InputProps={{ disableUnderline: true }}
                             />
+
                         </Box>
                     </Box>
 
                 </Paper>
+                <LiveHardwarePanel />
 
                 {/* MAIN */}
                 <Box
@@ -308,7 +323,7 @@ export default function Layout() {
                     sx={{
                         flex: 1,
                         minHeight: 0,
-                        overflow: "auto",
+                        overflow: "visible",
                         px: { xs: 1.25, md: 2 },
                         pb: { xs: 2.5, md: 3 },
                         background: "transparent", // או "var(--bg-main)"

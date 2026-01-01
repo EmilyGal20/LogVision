@@ -18,6 +18,8 @@ import Layout from "./components/Layout";
 // theme
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { useThemeMode } from "./context/ThemeContext";
+import { ControlCenterProvider } from "./context/ControlCenterContext";
+
 
 export default function App() {
     const { mode } = useThemeMode();
@@ -45,25 +47,29 @@ export default function App() {
     return (
         <BrowserRouter>
             <ThemeProvider theme={theme}>
-                <Routes>
-                    {/* Shell חדש במקום OS/Browser */}
-                    <Route path="/" element={<Layout />}>
-                        <Route index element={<Navigate to="/dashboard" replace />} />
+                <ControlCenterProvider>
 
-                        <Route path="dashboard" element={<Dashboard />} />
-                        <Route path="logs" element={<Logs />} />
-                        <Route path="search" element={<SearchIP />} />
-                        <Route path="admin" element={<AdminPanel />} />
+                    <Routes>
+                        {/* Shell חדש במקום OS/Browser */}
+                        <Route path="/" element={<Layout />}>
+                            <Route index element={<Navigate to="/dashboard" replace />} />
 
-                        <Route path="profile" element={<Profile />} />
-                        <Route path="hardware" element={<HardwareLogs />} />
-                        <Route path="issue/:id" element={<IssueDetails />} />
-                        <Route path="realtime" element={<RealTimeIP />} />
+                            <Route path="dashboard" element={<Dashboard />} />
+                            <Route path="logs" element={<Logs />} />
+                            <Route path="search" element={<SearchIP />} />
+                            <Route path="admin" element={<AdminPanel />} />
 
-                        {/* fallback */}
-                        <Route path="*" element={<Navigate to="/dashboard" replace />} />
-                    </Route>
-                </Routes>
+                            <Route path="profile" element={<Profile />} />
+                            <Route path="hardware" element={<HardwareLogs />} />
+                            <Route path="issue/:id" element={<IssueDetails />} />
+                            <Route path="realtime" element={<RealTimeIP />} />
+
+                            {/* fallback */}
+                            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                        </Route>
+                    </Routes>
+                </ControlCenterProvider>
+
             </ThemeProvider>
         </BrowserRouter>
     );

@@ -25,11 +25,15 @@ if (token) {
 // --- Inject token before every request ---
 api.interceptors.request.use((config) => {
     const t = getToken();
+
+    config.headers = config.headers || {}; // חשוב
+
     if (t) {
         config.headers.Authorization = `Bearer ${t}`;
     } else {
-        // חשוב: לנקות אם אין טוקן, כדי לא לשלוח "ghost header"
         delete config.headers.Authorization;
     }
+
     return config;
 });
+

@@ -142,14 +142,12 @@ export default function Dashboard() {
                 const alertPayload = incoming?.payload ?? incoming;
 
 
-                // אם זה באמת נראה כמו Alert (יש type/message לפחות)
                 if (alertPayload?.type && alertPayload?.message) {
                     setNewIssue(alertPayload);
                     setShowNewAlert(true);
 
                 }
 
-                // אם את רוצה לרענן נתונים אחרי כל alert:
                 loadData();
             } catch (err) {
                 console.error("Failed to parse WS message", err, msg.data);

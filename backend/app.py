@@ -13,6 +13,9 @@ from routers.alerts import router as alerts_router
 from routers.settings import router as settings_router
 from routers.ws_realtime import router as ws_router
 from routers.realtime import router as realtime_router
+from routers.hardware import router as hardware_router
+from routers.speedtest import router as speedtest_router
+
 
 # Demo file loader helpers
 import json
@@ -106,6 +109,8 @@ app.include_router(alerts_router)
 app.include_router(settings_router)
 app.include_router(ws_router)
 app.include_router(realtime_router)
+app.include_router(hardware_router)
+app.include_router(speedtest_router)
 
 
 # =========================================================

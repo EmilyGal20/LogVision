@@ -98,7 +98,7 @@ export default function SearchIP() {
     // ------------------------------------------------------
     const search = useCallback(async () => {
 
-        // ⭐ DEMO ONLY MODE (לא מבצע בקשה לשרת)
+        // ⭐ DEMO ONLY MODE 
         if (showDemoOnly) {
             const demo = DEMO_TEMPLATES.map((tpl, index) => ({
                 id: `demo-${index}`,
@@ -120,7 +120,11 @@ export default function SearchIP() {
         // REAL SEARCH
         const res = await api.get("/logs/search", { params: { ip } });
 
-        let realLogs = res.data.map(log => ({ ...log, is_real: true }));
+        let realLogs = res.data.map(log => ({
+            ...log,
+            is_real: !log.source,
+            is_json: log.source === "json"
+        }));
 
         if (errorType) realLogs = realLogs.filter(l => l.error_type === errorType);
         if (severityFilter) realLogs = realLogs.filter(l => l.severity === severityFilter);
@@ -350,9 +354,12 @@ export default function SearchIP() {
 
                                         {log.is_real ? (
                                             <span style={realBadge}>REAL</span>
+                                        ) : log.is_json ? (
+                                            <span style={demoBadge}>JSON</span>
                                         ) : (
                                             <span style={demoBadge}>DEMO</span>
                                         )}
+
                                     </Typography>
 
                                     <Typography sx={{ opacity: 0.8, color: textColor }}>

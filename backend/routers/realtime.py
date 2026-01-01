@@ -42,7 +42,7 @@ router = APIRouter(prefix="/realtime")
 # ============================================================
 
 
-@router.get("/start/{ip}", dependencies=[Depends(require_admin)])
+@router.get("/start/{ip}", dependencies=[Depends(require_user)])
 def start(ip: str):
     """ מתחיל ניטור ל-IP (אם לא פעיל כבר) """
     start_monitoring(ip)
@@ -112,7 +112,7 @@ def ping_history(ip: str):
 #   STOP MONITORING
 # ============================================================
 
-@router.get("/stop/{ip}", dependencies=[Depends(require_admin)])
+@router.get("/stop/{ip}", dependencies=[Depends(require_user)])
 def stop(ip: str):
     """ מפסיק ניטור ונותן תגובה מסודרת ל־React """
 
