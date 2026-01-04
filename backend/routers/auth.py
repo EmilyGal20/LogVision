@@ -8,6 +8,8 @@ from passlib.context import CryptContext
 
 from security import create_token
 from auth_dependencies import require_admin
+from auth_dependencies import require_user
+
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -54,9 +56,15 @@ def get_db():
         db.close()
 
 
+@router.get("/me", dependencies=[Depends(require_user)])
+def me(user=Depends(require_user)):
+    return user
+
 # ============================================================
 # TEST ADMIN ROUTE
 # ============================================================
+
+
 @router.get("/", dependencies=[Depends(require_admin)])
 def test_admin():
     return {"message": "Admin access confirmed"}

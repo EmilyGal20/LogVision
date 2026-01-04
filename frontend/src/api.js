@@ -23,17 +23,62 @@ if (token) {
 }
 
 // --- Inject token before every request ---
+// api.interceptors.request.use((config) => {
+//     const t = getToken();
+
+//     config.headers = config.headers || {}; // חשוב
+
+//     if (t) {
+//         config.headers.Authorization = `Bearer ${t}`;
+//         console.log("TOKEN SENT?", token ? token.slice(0, 12) : "NO TOKEN");
+//         console.log("REQ", config.method, config.url);
+
+//         // } else {
+//         //     delete config.headers.Authorization;
+//     }
+
+//     return config;
+// });
+
+// api.interceptors.request.use((config) => {
+//     const raw = localStorage.getItem("auth");
+//     const token = raw ? JSON.parse(raw)?.token : null;
+
+//     if (token) {
+//         // Axios v1 headers can be AxiosHeaders with .set()
+//         if (config.headers && typeof config.headers.set === "function") {
+//             config.headers.set("Authorization", `Bearer ${token}`);
+//         } else {
+//             config.headers = {
+//                 ...(config.headers || {}),
+//                 Authorization: `Bearer ${token}`,
+//             };
+//         }
+//     }
+
+//     return config;
+// });
+
 api.interceptors.request.use((config) => {
-    const t = getToken();
+    const raw = localStorage.getItem("auth");
+    const token = raw ? JSON.parse(raw)?.token : null;
 
-    config.headers = config.headers || {}; // חשוב
+    if (token) {
+        if (config.headers && typeof config.headers.set === "function") {
+            config.headers.set("Authorization", `Bearer ${token}`);
+        } else {
+            config.headers = { ...(config.headers || {}), Authorization: `Bearer ${token}` };
+        }
 
-    if (t) {
-        config.headers.Authorization = `Bearer ${t}`;
-    } else {
-        delete config.headers.Authorization;
+        // ✅ debug useful
+        if (!String(config.url).includes("/auth/login")) {
+            console.log("[API]", config.method?.toUpperCase(), config.url, "HAS TOKEN?", !!token);
+
+            // console.log("[API]", token ? "AUTH OK" : "NO TOKEN", config.method?.toUpperCase(), config.url);
+        }
     }
 
     return config;
 });
+
 

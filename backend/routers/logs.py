@@ -121,7 +121,6 @@ def search_logs(
     hw_logs = load_hw_logs()
     json_logs = []
 
-    # אם אין ip בכלל, אין סיבה להחזיר JSON (כמו במסך שלך שמחייב IP)
     if ip:
         ip_str = ip.strip()
 
@@ -129,11 +128,9 @@ def search_logs(
             item_ip = str(item.get("ip", "")).strip()
             item_type = str(item.get("error_type", "")).strip()
 
-            # match ip כמו ב-DB (contains)
             if ip_str and ip_str not in item_ip:
                 continue
 
-            # filter error_type אם נבחר
             if error_type and error_type.strip().lower() not in item_type.lower():
                 continue
 
