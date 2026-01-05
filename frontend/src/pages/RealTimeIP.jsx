@@ -103,6 +103,17 @@ export default function RealtimeIP() {
     // base url יציב
     const baseURL = useMemo(() => api?.defaults?.baseURL || "http://localhost:8000", []);
 
+    const getAuthToken = useCallback(() => {
+        try {
+            const raw = localStorage.getItem("auth");
+            if (!raw) return null;
+            return JSON.parse(raw)?.token || null;
+        } catch {
+            return null;
+        }
+    }, []);
+
+
     const mbps = useCallback((bytes, seconds) => {
         if (!seconds) return 0;
         return (bytes * 8) / (seconds * 1_000_000);
@@ -280,8 +291,20 @@ export default function RealtimeIP() {
         if (wsRef.current) wsRef.current.close();
 
         const wsBase = baseURL.replace(/^http/, "ws");
-        const ws = new WebSocket(`${wsBase}/realtime/ws/${ipToStart}`);
+
+        const token = getAuthToken();
+        if (!token) {
+            setAlertMessage("⚠️ Please login first (missing token for WebSocket)");
+            setShowAlert(true);
+            return;
+        }
+
+        // ✅ token ב-query param (דפדפן לא שולח Authorization header ב-WS)
+        const wsUrl = `${wsBase}/realtime/ws/${ipToStart}?token=${encodeURIComponent(token)}`;
+
+        const ws = new WebSocket(wsUrl);
         wsRef.current = ws;
+
 
         ws.onopen = () => {
             setAlertMessage(`WS connected: ${ipToStart}`);
@@ -325,18 +348,18 @@ export default function RealtimeIP() {
     };
 
     const startMonitoring = () => {
-        const raw = localStorage.getItem("auth");
-        const token = raw ? JSON.parse(raw)?.token : null;
+        const token = getAuthToken();
 
-        // ❗ אם אין token — לא לנסות בכלל
         if (!token) {
             setAlertMessage("⚠️ Please login first");
             setShowAlert(true);
             return;
         }
 
-        if (!ip) return;
-        startIP(ip, true);
+        const ipToStart = ip.trim();
+        if (!ipToStart) return;
+
+        startIP(ipToStart, true);
     };
 
 
@@ -735,8 +758,54 @@ export default function RealtimeIP() {
         setActiveIP(newIP);
         activeIPRef.current = newIP;
         resetCharts();
-        startIP(newIP, false);
+
+        // ✅ רק להתחבר WS בלי לקרוא ל-start backend ובלי להוסיף לטאבים שוב
+        if (wsRef.current) wsRef.current.close();
+
+        const wsBase = baseURL.replace(/^http/, "ws");
+        const token = getAuthToken();
+        if (!token) return;
+
+        const wsUrl = `${wsBase}/realtime/ws/${newIP}?token=${encodeURIComponent(token)}`;
+        const ws = new WebSocket(wsUrl);
+        wsRef.current = ws;
+
+        ws.onmessage = (event) => {
+            const p = JSON.parse(event.data);
+
+            setIpStatus((prev) => ({
+                ...prev,
+                [newIP]: { online: p.online, latency: p.latency, timestamp: p.timestamp },
+            }));
+
+            if (activeIPRef.current !== newIP) return;
+
+            if (p.latency != null) {
+                setLatencyHistory((prev) => [...prev.slice(-60), { time: Date.now(), value: p.latency }]);
+            }
+
+            setJitterHistory((prev) => [...prev.slice(-60), { time: Date.now(), value: Math.random() * 10 }]);
+            setPacketLossHistory((prev) => [...prev.slice(-60), { time: Date.now(), value: p.online ? 0 : 1 }]);
+
+            scoreRef.current = Math.max(0, Math.min(1, scoreRef.current + (p.online ? 0.02 : -0.05)));
+            setScoreHistory((prev) => [...prev.slice(-60), { time: Date.now(), value: scoreRef.current }]);
+        };
+
+        ws.onopen = () => {
+            setAlertMessage(`WS connected: ${newIP}`);
+            setShowAlert(true);
+        };
+
+        ws.onerror = () => {
+            setAlertMessage("WS error (check backend WS auth / token)");
+            setShowAlert(true);
+        };
+
+        ws.onclose = () => {
+            // לא חייבים להקפיץ כל פעם, אבל אפשר
+        };
     };
+
 
     const Tabs = () => (
         <Box sx={{ display: "flex", gap: 1, mb: 2, flexWrap: "wrap" }}>

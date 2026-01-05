@@ -126,48 +126,72 @@ export default function Dashboard() {
     }, [loadData]);
 
     // ================================================================
-    // LIVE WEBSOCKET ALERTS
+    // LIVE WEBSOCKET ALERTS (NO SPAM + ignores ping)
     // ================================================================
     const initWebSocket = useCallback(() => {
-        const ws = new WebSocket("ws://localhost:8000/ws/errors");
+        const httpBase = api?.defaults?.baseURL || "http://localhost:8000";
+        const wsBase = httpBase.replace(/^http/, "ws");
+
+        const raw = localStorage.getItem("auth");
+        const token = raw ? JSON.parse(raw)?.token : null;
+
+        const wsUrl = token
+            ? `${wsBase}/ws/errors?token=${encodeURIComponent(token)}`
+            : `${wsBase}/ws/errors`;
+
+        const ws = new WebSocket(wsUrl);
         wsRef.current = ws;
 
-        ws.onopen = () => console.log("WebSocket connected to /ws/errors");
+        ws.onopen = () => {
+            // console.log("WebSocket connected to /ws/errors");
+        };
 
         ws.onmessage = (msg) => {
-            console.log("WS raw:", msg.data);
+            // console.log("WS raw:", msg.data);
 
+            let incoming;
             try {
-                const incoming = JSON.parse(msg.data);
-                const alertPayload = incoming?.payload ?? incoming;
+                incoming = JSON.parse(msg.data);
+            } catch {
+                return;
+            }
 
+            if (incoming?.type === "ping") return;
 
-                if (alertPayload?.type && alertPayload?.message) {
-                    setNewIssue(alertPayload);
-                    setShowNewAlert(true);
+            const alertPayload = incoming?.payload ?? incoming;
 
-                }
-
+            if (alertPayload?.type && alertPayload?.message) {
+                setNewIssue(alertPayload);
+                setShowNewAlert(true);
                 loadData();
-            } catch (err) {
-                console.error("Failed to parse WS message", err, msg.data);
             }
         };
 
+        ws.onerror = () => {
+            // console.error("WebSocket error:", err);
+        };
 
-        ws.onerror = (err) => console.error("WebSocket error:", err);
-
-        ws.onclose = () => {
-            console.log("WebSocket closed, retrying in 5s...");
+        ws.onclose = (e) => {
+            if (!e.wasClean) {
+                console.warn("WebSocket closed, retrying in 5s...");
+            }
             retryTimeoutRef.current = setTimeout(initWebSocket, 5000);
         };
     }, [loadData]);
 
+
     useEffect(() => {
         initWebSocket();
         return () => {
-            if (wsRef.current) wsRef.current.close();
-            if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
+            if (retryTimeoutRef.current) {
+                clearTimeout(retryTimeoutRef.current);
+                retryTimeoutRef.current = null;
+            }
+            if (wsRef.current) {
+                wsRef.current.onclose = null;
+                wsRef.current.close();
+                wsRef.current = null;
+            }
         };
     }, [initWebSocket]);
 
