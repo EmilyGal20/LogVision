@@ -100,7 +100,6 @@ export default function RealtimeIP() {
 
     const clamp = useCallback((v, min, max) => Math.max(min, Math.min(max, v)), []);
 
-    // base url יציב
     const baseURL = useMemo(() => api?.defaults?.baseURL || "http://localhost:8000", []);
 
     const getAuthToken = useCallback(() => {
@@ -127,58 +126,68 @@ export default function RealtimeIP() {
             const start = performance.now();
             let bytes = 0;
 
-            const res = await fetch(
-                `${baseURL}/speedtest/download?size_mb=200&chunk_kb=256`,
-                { cache: "no-store", signal: ctrl.signal }
-            );
+            try {
+                const res = await fetch(
+                    `${baseURL}/speedtest/download?size_mb=200&chunk_kb=256`,
+                    { cache: "no-store", signal: ctrl.signal }
+                );
 
-            const reader = res.body?.getReader?.();
-            if (!reader) return 0;
+                const reader = res.body?.getReader?.();
+                if (!reader) return 0;
 
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
+                try {
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
 
-                bytes += value?.byteLength || 0;
-                const elapsed = (performance.now() - start) / 1000;
+                        bytes += value?.byteLength || 0;
+                        const elapsed = (performance.now() - start) / 1000;
 
-                if (elapsed >= seconds) {
-                    try { ctrl.abort(); } catch { }
-                    try { reader.cancel(); } catch { }
-                    break;
+                        if (elapsed >= seconds) {
+                            try { ctrl.abort(); } catch { }
+                            try { reader.cancel(); } catch { }
+                            break;
+                        }
+                    }
+                } catch (err) {
+                    if (err?.name !== "AbortError") throw err;
                 }
-            }
 
-            const totalSec = (performance.now() - start) / 1000;
-            return Number(mbps(bytes, totalSec).toFixed(1));
+                const totalSec = (performance.now() - start) / 1000;
+                return Number(mbps(bytes, totalSec).toFixed(1));
+            } catch (err) {
+                if (err?.name === "AbortError") {
+                    const totalSec = (performance.now() - start) / 1000;
+                    return Number(mbps(bytes, totalSec).toFixed(1));
+                }
+                throw err;
+            }
         },
         [baseURL, mbps]
     );
+
 
     const runUploadSample = useCallback(
-        async (seconds = 2.5) => {
-            const start = performance.now();
-            let bytesSent = 0;
+        async (sizeMB = 10) => {
+            const blob = new Blob([new Uint8Array(sizeMB * 1024 * 1024)]);
+            const form = new FormData();
+            form.append("file", blob, "speedtest.bin");
 
-            while ((performance.now() - start) / 1000 < seconds) {
-                const blob = new Blob([new Uint8Array(1024 * 1024)]); // 1MB
-                const form = new FormData();
-                form.append("file", blob, "chunk.bin");
+            const t0 = performance.now();
+            const res = await fetch(`${baseURL}/speedtest/upload`, {
+                method: "POST",
+                body: form,
+                cache: "no-store",
+            });
+            if (!res.ok) throw new Error(`Upload failed (${res.status})`);
+            const t1 = performance.now();
 
-                await fetch(`${baseURL}/speedtest/upload`, {
-                    method: "POST",
-                    body: form,
-                });
-
-                bytesSent += blob.size;
-                await new Promise((r) => setTimeout(r, 60));
-            }
-
-            const totalSec = (performance.now() - start) / 1000;
-            return Number(mbps(bytesSent, totalSec).toFixed(1));
+            const seconds = (t1 - t0) / 1000;
+            return Number(mbps(blob.size, seconds).toFixed(1));
         },
         [baseURL, mbps]
     );
+
 
     useEffect(() => {
         return () => {
@@ -207,7 +216,6 @@ export default function RealtimeIP() {
         scoreRef.current = 0;
     }, []);
 
-    // ✅ Speedtest loop
     useEffect(() => {
         if (speedTimerRef.current) {
             clearInterval(speedTimerRef.current);
@@ -235,7 +243,7 @@ export default function RealtimeIP() {
                         { time: Date.now(), value: down },
                     ]);
                 } else {
-                    const up = await runUploadSample(2.2);
+                    const up = await runUploadSample(15);
                     setUploadHistory((prev) => [
                         ...prev.slice(-30),
                         { time: Date.now(), value: up },
@@ -299,7 +307,6 @@ export default function RealtimeIP() {
             return;
         }
 
-        // ✅ token ב-query param (דפדפן לא שולח Authorization header ב-WS)
         const wsUrl = `${wsBase}/realtime/ws/${ipToStart}?token=${encodeURIComponent(token)}`;
 
         const ws = new WebSocket(wsUrl);
@@ -380,7 +387,6 @@ export default function RealtimeIP() {
     const dlStats = useMemo(() => calcStats(downloadHistory), [calcStats, downloadHistory]);
     const ulStats = useMemo(() => calcStats(uploadHistory), [calcStats, uploadHistory]);
 
-    // ✅ Ping כמו Speedtest (ניקח את האחרון מה-latencyHistory)
     const pingMs = useMemo(() => {
         const last = latencyHistory?.[latencyHistory.length - 1]?.value;
         return last != null ? Math.round(Number(last)) : null;
@@ -403,9 +409,12 @@ export default function RealtimeIP() {
     useEffect(() => {
         const last = Number(dlStats.last) || 0;
         setDlRange((prev) => {
-            const targetMax = niceMax(Math.max(last * 1.15, 50)); // headroom
-            const newMax = Math.max(prev.max * 0.92, targetMax);  // shrink slowly
-            return { min: 0, max: newMax };
+            const targetMax = niceMax(Math.max(last * 1.15, 50));
+            const newMax = Math.max(prev.max * 0.92, targetMax);
+
+            if (!isFinite(newMax) || Math.abs(newMax - prev.max) < 0.5) return prev;
+
+            return { ...prev, max: newMax };
         });
     }, [dlStats.last]);
 
@@ -414,9 +423,13 @@ export default function RealtimeIP() {
         setUlRange((prev) => {
             const targetMax = niceMax(Math.max(last * 1.15, 50));
             const newMax = Math.max(prev.max * 0.92, targetMax);
-            return { min: 0, max: newMax };
+
+            if (!isFinite(newMax) || Math.abs(newMax - prev.max) < 0.5) return prev;
+
+            return { ...prev, max: newMax };
         });
     }, [ulStats.last]);
+
 
     // =========================================================
     // ✅ ADDED: Gauge Segments + Needle (Needle uses injected min/max)
@@ -434,7 +447,6 @@ export default function RealtimeIP() {
                 const clamped = Math.max(min, Math.min(max, value));
                 const t = (clamped - min) / (max - min || 1);
 
-                // ✅ עוגן כמו Speedtest: מרכז למטה
                 const cx = (chartArea.left + chartArea.right) / 2;
                 const cy = chartArea.bottom;
 
@@ -447,7 +459,6 @@ export default function RealtimeIP() {
                 ctx.translate(cx, cy);
                 ctx.rotate(angle);
 
-                // ✅ מחוג (למעלה מתוך העוגן)
                 ctx.beginPath();
                 ctx.moveTo(0, 0);
                 ctx.lineTo(0, -r);
@@ -479,7 +490,6 @@ export default function RealtimeIP() {
                 const min = Number(pluginOptions?.min ?? 0);
                 const max = Number(pluginOptions?.max ?? 300);
 
-                // הטיקים שביקשת (נציג רק מה שנמצא בתוך הטווח הדינאמי)
                 const baseTicks = pluginOptions?.ticks ?? [200, 800, 1500, 3000];
                 const ticks = baseTicks
                     .map((x) => Number(x))
@@ -493,7 +503,6 @@ export default function RealtimeIP() {
                     pluginOptions?.labelColor ||
                     (isDarkLocal ? "rgba(255,255,255,0.65)" : "rgba(17,24,39,0.65)");
 
-                // ✅ עוגן כמו Speedtest: מרכז למטה
                 const cx = (chartArea.left + chartArea.right) / 2;
                 const cy = chartArea.bottom;
 
@@ -543,14 +552,13 @@ export default function RealtimeIP() {
             responsive: true,
             maintainAspectRatio: false,
 
-            // ✅ חצי עיגול כמו Speedtest (שמאל→ימין) עם אמצע למעלה
-            rotation: -90,         // מתחיל בשמאל
-            circumference: 180,    // חצי עיגול
+            rotation: -90,
+            circumference: 180,
 
             plugins: {
                 legend: { display: false },
                 tooltip: { enabled: false },
-                needle: {}, // value/min/max injected per chart
+                needle: {},
             },
             animation: {
                 duration: 450,
@@ -560,12 +568,11 @@ export default function RealtimeIP() {
         []
     );
 
-    // ✅ Center overlay consistent position (same for DL/UL)
     const centerOverlaySx = useMemo(
         () => ({
             position: "absolute",
             left: "50%",
-            bottom: "18%", // ✅ אותו מקום תמיד (לא קופץ בין DL ל-UL)
+            bottom: "18%",
             transform: "translateX(-50%)",
             textAlign: "center",
             minWidth: 140,

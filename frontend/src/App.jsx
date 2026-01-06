@@ -1,6 +1,8 @@
 import "./App.css";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, useState } from "react";
+import Snackbar from "@mui/material/Snackbar";
+import Alert from "@mui/material/Alert";
 
 // pages
 import Dashboard from "./pages/Dashboard";
@@ -11,6 +13,8 @@ import Profile from "./pages/Profile";
 import HardwareLogs from "./pages/HardwareLogs";
 import IssueDetails from "./pages/IssueDetails";
 import RealTimeIP from "./pages/RealTimeIP";
+import RequireAuth from "./components/RequireAuth";
+
 
 // layout (בשלב הבא נשדרג אותו ל-Twitch style)
 import Layout from "./components/Layout";
@@ -23,6 +27,7 @@ import { ControlCenterProvider } from "./context/ControlCenterContext";
 
 export default function App() {
     const { mode } = useThemeMode();
+    const [sessionExpiredOpen, setSessionExpiredOpen] = useState(false);
 
     // Sync body class (dark / light)
     useEffect(() => {
@@ -30,6 +35,12 @@ export default function App() {
         document.body.className = mode === "light" ? "light-mode" : "dark";
 
     }, [mode]);
+
+    useEffect(() => {
+        const onExpired = () => setSessionExpiredOpen(true);
+        window.addEventListener("auth:expired", onExpired);
+        return () => window.removeEventListener("auth:expired", onExpired);
+    }, []);
 
     // MUI Theme (שומר צבעים)
     const theme = useMemo(
@@ -54,21 +65,32 @@ export default function App() {
                         <Route path="/" element={<Layout />}>
                             <Route index element={<Navigate to="/dashboard" replace />} />
 
-                            <Route path="dashboard" element={<Dashboard />} />
-                            <Route path="logs" element={<Logs />} />
-                            <Route path="search" element={<SearchIP />} />
-                            <Route path="admin" element={<AdminPanel />} />
-
+                            <Route path="dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
+                            <Route path="logs" element={<RequireAuth><Logs /></RequireAuth>} />
+                            <Route path="search" element={<RequireAuth><SearchIP /></RequireAuth>} />
+                            <Route path="admin" element={<RequireAuth><AdminPanel /></RequireAuth>} />
+                            <Route path="hardware" element={<RequireAuth><HardwareLogs /></RequireAuth>} />
+                            <Route path="issue/:id" element={<RequireAuth><IssueDetails /></RequireAuth>} />
+                            <Route path="realtime" element={<RequireAuth><RealTimeIP /></RequireAuth>} />
                             <Route path="profile" element={<Profile />} />
-                            <Route path="hardware" element={<HardwareLogs />} />
-                            <Route path="issue/:id" element={<IssueDetails />} />
-                            <Route path="realtime" element={<RealTimeIP />} />
 
                             {/* fallback */}
-                            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                            {/* <Route path="*" element={<Navigate to="/dashboard" replace />} /> */}
+                            <Route path="*" element={<Navigate to="/profile" replace />} />
+
                         </Route>
                     </Routes>
                 </ControlCenterProvider>
+                <Snackbar
+                    open={sessionExpiredOpen}
+                    autoHideDuration={2500}
+                    onClose={() => setSessionExpiredOpen(false)}
+                    anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+                >
+                    <Alert severity="warning" variant="filled">
+                        Session expired, please login again
+                    </Alert>
+                </Snackbar>
 
             </ThemeProvider>
         </BrowserRouter>

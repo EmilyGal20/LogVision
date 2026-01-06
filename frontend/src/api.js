@@ -62,6 +62,36 @@ api.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
+// // -------------------------------------------
+// // Response interceptor — handle 401
+// // -------------------------------------------
+// api.interceptors.response.use(
+//     (res) => res,
+//     (err) => {
+//         const status = err?.response?.status;
+//         const detail = err?.response?.data?.detail;
+
+//         if (status === 401) {
+//             console.warn("[API] 401 Unauthorized:", detail || "(no detail)");
+
+//             const d = String(detail || "").toLowerCase();
+//             if (d.includes("expired") || d.includes("invalid")) {
+//                 clearAuth();
+//                 // אופציונלי:
+//                 // window.location.href = "/login";
+//             }
+//         }
+
+//         return Promise.reject(err);
+//     }
+// );
+
+
+// -------------------------------------------
+// Response interceptor — handle 401
+// -------------------------------------------
+let isRedirecting = false;
+
 // -------------------------------------------
 // Response interceptor — handle 401
 // -------------------------------------------
@@ -70,18 +100,30 @@ api.interceptors.response.use(
     (err) => {
         const status = err?.response?.status;
         const detail = err?.response?.data?.detail;
+        const originalUrl = err?.config?.url || "";
 
         if (status === 401) {
             console.warn("[API] 401 Unauthorized:", detail || "(no detail)");
 
-            const d = String(detail || "").toLowerCase();
-            if (d.includes("expired") || d.includes("invalid")) {
+            const isAuthCall =
+                originalUrl.includes("/auth/login") || originalUrl.includes("/auth/register");
+            if (isAuthCall) return Promise.reject(err);
+
+            const currentPath = window.location.pathname || "";
+            const isOnProfile = currentPath.startsWith("/profile");
+
+            if (!isOnProfile && !isRedirecting) {
+                isRedirecting = true;
+
                 clearAuth();
-                // אופציונלי:
-                // window.location.href = "/login";
+                window.dispatchEvent(new CustomEvent("auth:expired"));
+
+                const next = encodeURIComponent(currentPath + window.location.search);
+                window.location.assign(`/profile?next=${next}`);
             }
         }
 
         return Promise.reject(err);
     }
 );
+
