@@ -8,6 +8,8 @@ import MemoryIcon from "@mui/icons-material/Memory";
 import BugReportIcon from "@mui/icons-material/BugReport";
 import WifiIcon from "@mui/icons-material/Wifi";
 import ErrorIcon from "@mui/icons-material/Error";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+
 import RefreshIcon from "@mui/icons-material/Refresh";
 
 import usePersistentState from "../hooks/usePersistentState";
@@ -33,6 +35,8 @@ export default function Logs() {
     const filterSeverity = params.get("severity");
     const filterAll = params.get("filter");
 
+
+
     // ============================================================
     // LOAD LOGS
     // ============================================================
@@ -45,12 +49,14 @@ export default function Logs() {
             const hardwareErrors = Array.isArray(hwRes.data)
                 ? hwRes.data.map((item, index) => ({
                     ...item,
-                    id: `json-${item.id ?? index + 1}`,
+                    id: `json-${item.id ?? "noid"}-${index}`, // ✅ תמיד ייחודי
                     source: "json",
                 }))
                 : [];
 
-            let merged = [...hardwareErrors, ...real];
+
+            // let merged = [...real];
+            let merged = real.filter(l => l.source !== "json");
 
             if (filterCategory) merged = merged.filter(l => l.error_type === filterCategory);
             if (filterSeverity) merged = merged.filter(l => l.severity === filterSeverity);
@@ -150,7 +156,18 @@ export default function Logs() {
         }
     };
 
-    const openIssue = log => navigate(`/issue/${log.id}`);
+    // const openIssue = log => navigate(`/issue/${log.id}`);
+
+    const openIssue = log => {
+        if (log.source === "json") return; // ⛔ אין דף ל־JSON
+        navigate(`/issue/${log.id}`);
+    };
+
+    const STATUS_MAP = {
+        open: { label: "OPEN", color: "error", icon: <ErrorIcon /> },
+        resolved: { label: "RESOLVED", color: "success", icon: <CheckCircleIcon /> },
+        investigating: { label: "INVESTIGATING", color: "warning", icon: <ErrorIcon /> },
+    };
 
     return (
         <Box>
@@ -170,55 +187,67 @@ export default function Logs() {
             </Box>
 
             <Box sx={{ maxWidth: 900, margin: "0 auto" }}>
-                {logs.map((log, i) => (
-                    <Paper
-                        key={log.id ?? `missing-${i}`}
-                        sx={{
-                            p: 3,
-                            mb: 2,
-                            borderRadius: "14px",
-                            display: "flex",
-                            gap: 2,
-                            cursor: "pointer",
-                            background: bgCard,
-                            borderLeft: `8px solid ${severityColor[log.severity]}`,
-                        }}
-                        onClick={() => openIssue(log)}
-                    >
-                        <Box sx={{ pt: 1 }}>{iconForType(log.error_type)}</Box>
+                {logs.map((log, i) => {
+                    const statusKey = (log.status || "open").toLowerCase();
+                    const status = STATUS_MAP[statusKey] || STATUS_MAP.open;
 
-                        <Box sx={{ flexGrow: 1 }}>
-                            <Typography sx={{ fontWeight: "bold", color: textColor }}>
-                                {log.error_type} — {log.computer_name}
-                            </Typography>
+                    return (
+                        <Paper
+                            key={`${log.source || "db"}-${String(log.id ?? `missing-${i}`)}-${log.ip || "noip"}`}
+                            sx={{
+                                p: 3,
+                                mb: 2,
+                                borderRadius: "14px",
+                                display: "flex",
+                                gap: 2,
+                                cursor: "pointer",
+                                background: bgCard,
+                                borderLeft: `8px solid ${severityColor[log.severity]}`,
+                            }}
+                            onClick={() => openIssue(log)}
+                        >
+                            <Box sx={{ pt: 1 }}>{iconForType(log.error_type)}</Box>
 
-                            <Typography sx={{ opacity: 0.8, color: textColor }}>
-                                {log.description}
-                            </Typography>
+                            <Box sx={{ flexGrow: 1 }}>
+                                <Typography sx={{ fontWeight: "bold", color: textColor }}>
+                                    {log.error_type} — {log.computer_name}
+                                </Typography>
 
-                            <Typography sx={{ mt: 1, color: textColor }}>
-                                IP: <b>{log.ip}</b>
-                            </Typography>
+                                <Typography sx={{ opacity: 0.8, color: textColor }}>
+                                    {log.description}
+                                </Typography>
 
-                            <Typography
-                                sx={{
-                                    mt: 1,
-                                    fontSize: "0.75rem",
-                                    opacity: 0.6,
-                                    color: textColor,
-                                }}
-                            >
-                                {new Date(log.created_at || Date.now()).toLocaleString()}
-                            </Typography>
-                        </Box>
+                                <Typography sx={{ mt: 1, color: textColor }}>
+                                    IP: <b>{log.ip}</b>
+                                </Typography>
 
-                        <Chip
+                                <Typography
+                                    sx={{
+                                        mt: 1,
+                                        fontSize: "0.75rem",
+                                        opacity: 0.6,
+                                        color: textColor,
+                                    }}
+                                >
+                                    {new Date(log.created_at || Date.now()).toLocaleString()}
+                                </Typography>
+                            </Box>
+
+                            {/* <Chip
                             label={log.source === "json" ? "JSON" : "REAL"}
                             color={log.source === "json" ? "warning" : "info"}
                             sx={{ fontWeight: "bold", height: "28px" }}
-                        />
-                    </Paper>
-                ))}
+                        /> */}
+                            <Chip
+                                icon={status.icon}
+                                label={status.label}
+                                color={status.color}
+                                size="small"
+                            />
+
+                        </Paper>
+                    );
+                })}
 
                 {logs.length === 0 && (
                     <Typography sx={{ color: textColor, opacity: 0.6, mt: 5, textAlign: "center" }}>

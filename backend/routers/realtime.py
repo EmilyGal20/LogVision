@@ -315,7 +315,7 @@ async def ws_monitor(websocket: WebSocket, ip: str):
         while True:
             data = get_realtime_data(ip)
             await websocket.send_json(data)
-            await asyncio.sleep(1)
+            await asyncio.sleep(10)
     except Exception as e:
         print(f"[WS CLOSED] {ip}: {e}")
     finally:

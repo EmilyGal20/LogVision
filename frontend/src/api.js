@@ -1,10 +1,32 @@
 // src/api.js
 import axios from "axios";
 
+// export const api = axios.create({
+//     baseURL: "http://10.41.250.250:8000",
+//     withCredentials: false,
+// });
+
+// export const api = axios.create({
+//     baseURL: import.meta.env.VITE_API_URL || "http://localhost:8000",
+//     withCredentials: false,
+// });
+
+// const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
+// export const api = axios.create({
+//   baseURL: BASE_URL,
+//   withCredentials: false,
+// });
+
+// const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const BASE_URL =
+    process.env.REACT_APP_API_URL || "http://localhost:8000";
+
 export const api = axios.create({
-    baseURL: "http://10.41.250.250:8000",
+    baseURL: BASE_URL,
     withCredentials: false,
 });
+
 
 // -------------------------
 // Helpers: auth storage
@@ -48,6 +70,7 @@ api.interceptors.request.use(
             if (token) config.headers.Authorization = `Bearer ${token}`;
             else delete config.headers.Authorization;
         }
+        // console.log("[API] baseURL =", api.defaults.baseURL);
 
         // console.log(
         //     "[API]",
