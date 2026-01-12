@@ -407,12 +407,27 @@ export default function SearchIP() {
         setDeviceLoading(true);
         setDeviceError("");
         try {
-            const res = await api.get(`/devices/${targetIp}`);
+            const res = await api.get(`/devices/${targetIp}`)
+
             setDeviceInfo(res.data);
         } catch (e) {
             setDeviceInfo(null);
-            setDeviceError("Device was not found for this IP (Or no admin permissions).");
-        } finally {
+
+            const status = e?.response?.status;
+            const data = e?.response?.data;
+
+            if (status === 404) {
+                setDeviceError("Device not found for this IP.");
+            } else if (status === 403) {
+                setDeviceError("No permission to view device info.");
+            } else {
+                setDeviceError(
+                    `Failed to load device info. ${status ? `Status: ${status}` : ""} ${data ? `Response: ${JSON.stringify(data)}` : ""
+                    }`
+                );
+            }
+        }
+        finally {
             setDeviceLoading(false);
         }
     }, []);

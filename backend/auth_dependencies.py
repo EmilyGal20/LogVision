@@ -109,15 +109,15 @@ security = HTTPBearer()
 
 
 def get_current_user(token: HTTPAuthorizationCredentials = Depends(security)):
-    print("AUTH HEADER CREDENTIALS:",
-          token.credentials[:20] if token else None)
+    # print("AUTH HEADER CREDENTIALS:",
+    #       token.credentials[:20] if token else None)
 
     if token is None or token.credentials is None:
         raise HTTPException(
             status_code=401, detail="Missing authentication token")
 
     payload = verify_token(token.credentials)
-    print("VERIFY PAYLOAD:", payload)
+    # print("VERIFY PAYLOAD:", payload)
 
     if payload is None:
         raise HTTPException(status_code=401, detail="Invalid token")

@@ -15,6 +15,7 @@ from routers.ws_realtime import router as ws_router
 from routers.realtime import router as realtime_router
 from routers.hardware import router as hardware_router
 from routers.speedtest import router as speedtest_router
+from routers.agent import router as agent_router
 
 
 # Demo file loader helpers
@@ -111,6 +112,7 @@ app.include_router(ws_router)
 app.include_router(realtime_router)
 app.include_router(hardware_router)
 app.include_router(speedtest_router)
+app.include_router(agent_router)
 
 
 # =========================================================
