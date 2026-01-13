@@ -61,7 +61,6 @@ export default function App() {
                 <ControlCenterProvider>
 
                     <Routes>
-                        {/* Shell חדש במקום OS/Browser */}
                         <Route path="/" element={<Layout />}>
                             <Route index element={<Navigate to="/dashboard" replace />} />
 

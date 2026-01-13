@@ -397,7 +397,6 @@ from datetime import datetime, timedelta
 
 router = APIRouter(prefix="/devices", tags=["Devices"])
 
-# כדי לא לעדכן last_ping כל שנייה ולהציף UI
 HEARTBEAT_INTERVAL = timedelta(minutes=2)
 
 
@@ -436,7 +435,6 @@ def get_device(
 
     device = db.query(Device).filter(Device.ip == ip).first()
 
-    # ✅ אם אין — ליצור placeholder ולהחזיר (לא 404)
     if not device:
         now = datetime.utcnow()
         device = Device(
@@ -476,7 +474,7 @@ def create_device(data: DeviceCreate, db: Session = Depends(get_db)):
         gpu_temp=0,
         ram_used=0,
         last_ping=None,
-        last_update=now,  # אם יש
+        last_update=now,
     )
 
     db.add(d)
@@ -497,7 +495,6 @@ def update_device(ip: str, data: DeviceUpdate, db: Session = Depends(get_db)):
     for field, value in data.dict(exclude_unset=True).items():
         setattr(device, field, value)
 
-    # אופציונלי
     if hasattr(device, "last_update"):
         device.last_update = datetime.utcnow()
 
@@ -527,11 +524,9 @@ def ping_device(ip: str, db: Session = Depends(get_db)):
             now - device.last_ping) >= HEARTBEAT_INTERVAL
     )
 
-    # ✅ last_ping רק אם הסטטוס השתנה או עבר זמן
     if prev_online != new_online or should_heartbeat:
         device.last_ping = now
 
-    # ✅ last_update תמיד (אם יש)
     if hasattr(device, "last_update"):
         device.last_update = now
 
@@ -587,7 +582,7 @@ def update_health(
     ip: str,
     health: dict,
     db: Session = Depends(get_db),
-    user=Depends(get_current_user),  # ✅ לא admin-only כדי ש-Agent יוכל לעבוד
+    user=Depends(get_current_user),
 ):
     device = db.query(Device).filter(Device.ip == ip).first()
 

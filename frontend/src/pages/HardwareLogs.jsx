@@ -1,8 +1,9 @@
 /////////////////////////////////////////////
 //  HardwareLogs.jsx — Multi-IP + Persistent + Demo Logs
 /////////////////////////////////////////////
+// import { useMemo } from "react";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { api } from "../api";
 import usePersistentState from "../hooks/usePersistentState";
 
@@ -69,41 +70,41 @@ export default function HardwareLogs() {
     //////////////////////////////////////////////////
     // Demo Hardware Logs
     //////////////////////////////////////////////////
-    const demoHardware = useMemo(
-        () => [
-            {
-                id: "demo-hw-1",
-                computer_name: "PC-002",
-                ip: "192.168.1.45",
-                error_type: "Hardware",
-                description: "CPU Overheating detected",
-                severity: "Critical",
-                status: "open",
-                created_at: "2025-12-07T09:42:11",
-            },
-            {
-                id: "demo-hw-2",
-                computer_name: "PC-004",
-                ip: "192.168.1.77",
-                error_type: "Hardware",
-                description: "RAM failure detected in slot B2",
-                severity: "Medium",
-                status: "open",
-                created_at: "2025-12-07T08:10:33",
-            },
-            {
-                id: "demo-hw-3",
-                computer_name: "Server-01",
-                ip: "192.168.1.10",
-                error_type: "Hardware",
-                description: "Disk read errors on /dev/sda1",
-                severity: "Low",
-                status: "open",
-                created_at: "2025-12-06T23:58:12",
-            },
-        ],
-        []
-    );
+    // const demoHardware = useMemo(
+    //     () => [
+    //         {
+    //             id: "demo-hw-1",
+    //             computer_name: "PC-002",
+    //             ip: "192.168.1.45",
+    //             error_type: "Hardware",
+    //             description: "CPU Overheating detected",
+    //             severity: "Critical",
+    //             status: "open",
+    //             created_at: "2025-12-07T09:42:11",
+    //         },
+    //         {
+    //             id: "demo-hw-2",
+    //             computer_name: "PC-004",
+    //             ip: "192.168.1.77",
+    //             error_type: "Hardware",
+    //             description: "RAM failure detected in slot B2",
+    //             severity: "Medium",
+    //             status: "open",
+    //             created_at: "2025-12-07T08:10:33",
+    //         },
+    //         {
+    //             id: "demo-hw-3",
+    //             computer_name: "Server-01",
+    //             ip: "192.168.1.10",
+    //             error_type: "Hardware",
+    //             description: "Disk read errors on /dev/sda1",
+    //             severity: "Low",
+    //             status: "open",
+    //             created_at: "2025-12-06T23:58:12",
+    //         },
+    //     ],
+    //     []
+    // );
 
     //////////////////////////////////////////////////
     // Add new IP
@@ -173,16 +174,17 @@ export default function HardwareLogs() {
                 );
 
             // Fallback to demo if empty
-            if (data.length === 0) data = demoHardware;
+            // if (data.length === 0) data = demoHardware;
 
             setLogs(data);
         } catch (err) {
             console.error("❌ Load error:", err);
-            setLogs(demoHardware);
+            setLogs();
+            // demoHardware
         } finally {
             setLoading(false);
         }
-    }, [ipList, filters, tab, demoHardware]);
+    }, [ipList, filters, tab]);
 
     useEffect(() => {
         const delay = setTimeout(loadLogs, 300);
@@ -207,10 +209,10 @@ export default function HardwareLogs() {
     // Resolve Log
     //////////////////////////////////////////////////
     const resolveLog = async (id) => {
-        if (id.startsWith("demo")) {
-            alert("This is a demo log — cannot resolve.");
-            return;
-        }
+        // if (id.startsWith("demo")) {
+        //     alert("This is a demo log — cannot resolve.");
+        //     return;
+        // }
         await api.put(`/logs/resolve/${id}`);
         loadLogs();
     };
