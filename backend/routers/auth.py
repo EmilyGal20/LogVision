@@ -104,7 +104,8 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
 # ============================================================
 @router.post("/login")
 def login(data: LoginSchema, db: Session = Depends(get_db)):
-    print("LOGIN DATA:", data)
+    # print("LOGIN DATA:", data)
+    # print(f"LOGIN attempt for user: {data.username}")
 
     # 🔍 sherch by Username or Email
     user = (

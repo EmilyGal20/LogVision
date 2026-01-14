@@ -27,8 +27,10 @@ class UserOut(BaseModel):
     email: Optional[str] = None
     role: str
 
+    # class Config:
+    #     orm_mode = True
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class UserBasic(BaseModel):
@@ -37,7 +39,7 @@ class UserBasic(BaseModel):
     role: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class LoginSchema(BaseModel):
@@ -68,7 +70,7 @@ class LogOut(BaseModel):
     created_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class LogRead(BaseModel):
@@ -83,7 +85,7 @@ class LogRead(BaseModel):
     created_by: Optional[int] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # ============================================================
@@ -118,7 +120,7 @@ class DeviceOut(BaseModel):
     last_update: Optional[datetime]
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # ============================================================
@@ -142,7 +144,7 @@ class AlertOut(BaseModel):
     acknowledged: bool
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # ============================================================
 # SETTINGS SCHEMAS (Final Clean Version)
@@ -159,12 +161,12 @@ class SettingOut(BaseModel):
     value: Any
 
     class Config:
-        orm_mode = True
-
+        from_attributes = True
 
 # ============================================================
 # MONITORING SCHEMAS
 # ============================================================
+
 
 class MonitorEvent(BaseModel):
     ip: str
@@ -181,4 +183,4 @@ class UptimeOut(BaseModel):
     timestamp: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True

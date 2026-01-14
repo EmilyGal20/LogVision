@@ -135,15 +135,21 @@ export default function Dashboard() {
         const raw = localStorage.getItem("auth");
         const token = raw ? JSON.parse(raw)?.token : null;
 
-        const wsUrl = token
-            ? `${wsBase}/ws/errors?token=${encodeURIComponent(token)}`
-            : `${wsBase}/ws/errors`;
+        // const wsUrl = token
+        //     ? `${wsBase}/ws/errors?token=${encodeURIComponent(token)}`
+        //     : `${wsBase}/ws/errors`;
+
+        const wsUrl = `${wsBase}/ws/errors`;
+
 
         const ws = new WebSocket(wsUrl);
         wsRef.current = ws;
 
         ws.onopen = () => {
             // console.log("WebSocket connected to /ws/errors");
+            if (token) {
+                ws.send(JSON.stringify({ type: "auth", token }));
+            }
         };
 
         ws.onmessage = (msg) => {

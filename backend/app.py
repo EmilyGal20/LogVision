@@ -64,39 +64,39 @@ app.add_middleware(
 # =========================================================
 # LOAD DEMO DATA
 # =========================================================
-@app.on_event("startup")
-def load_demo_data():
-    current = load_hw_errors()
+# @app.on_event("startup")
+# def load_demo_data():
+#     current = load_hw_errors()
 
-    if len(current) > 0:
-        print("Hardware errors exist — skipping demo.")
-        return
+#     if len(current) > 0:
+#         print("Hardware errors exist — skipping demo.")
+#         return
 
-    demo = [
-        {
-            "id": 2,
-            "computer_name": "PC-001",
-            "ip": "192.168.1.50",
-            "error_type": "Network",
-            "description": "Ping timeout detected",
-            "severity": "Critical",
-            "status": "open",
-            "created_at": "2025-12-07T11:20:47"
-        },
-        {
-            "id": 1,
-            "computer_name": "PC-001",
-            "ip": "192.168.1.50",
-            "error_type": "Network",
-            "description": "Ping timeout detected",
-            "severity": "Critical",
-            "status": "open",
-            "created_at": "2025-12-07T10:16:38"
-        }
-    ]
+#     demo = [
+#         {
+#             "id": 2,
+#             "computer_name": "PC-001",
+#             "ip": "192.168.1.50",
+#             "error_type": "Network",
+#             "description": "Ping timeout detected",
+#             "severity": "Critical",
+#             "status": "open",
+#             "created_at": "2025-12-07T11:20:47"
+#         },
+#         {
+#             "id": 1,
+#             "computer_name": "PC-001",
+#             "ip": "192.168.1.50",
+#             "error_type": "Network",
+#             "description": "Ping timeout detected",
+#             "severity": "Critical",
+#             "status": "open",
+#             "created_at": "2025-12-07T10:16:38"
+#         }
+#     ]
 
-    save_hw_errors(demo)
-    print("✔ Demo hardware errors loaded!")
+#     save_hw_errors(demo)
+#     print("✔ Demo hardware errors loaded!")
 
 
 # =========================================================
