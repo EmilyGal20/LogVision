@@ -35,7 +35,7 @@ export default function PageLoader({ show }) {
         <div className={`lv-loader ${show ? "" : "lv-loader--hide"}`}>
             <img
                 className="lv-loader__logo"
-                src={`${process.env.PUBLIC_URL}/logVision2.png`}
+                src={`${process.env.PUBLIC_URL}/logVision3.png`}
                 alt="LOG VISION"
             />
             <div className="lv-loader__text">
