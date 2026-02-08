@@ -4,7 +4,6 @@ from monitor import get_realtime_data
 
 router = APIRouter(prefix="/ws")
 print("WS REALTIME ROUTER LOADED")
-
 # ============================================================
 #  LIVE MONITOR STREAM — /ws/monitor/{ip}
 # ============================================================
