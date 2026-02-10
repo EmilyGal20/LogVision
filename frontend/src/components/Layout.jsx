@@ -309,6 +309,10 @@ export default function Layout() {
                                 placeholder="Search IP / Computer / Error…"
                                 variant="standard"
                                 InputProps={{ disableUnderline: true }}
+                                sx={{
+                                    flex: 1,
+                                    minWidth: 0,
+                                }}
                             />
 
                         </Box>
