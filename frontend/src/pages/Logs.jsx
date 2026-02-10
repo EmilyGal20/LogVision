@@ -1,6 +1,10 @@
 import { useEffect, useCallback, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Paper, Typography, Box, Chip, Button, Snackbar, Alert } from "@mui/material";
+import {
+    Paper, Typography, Box, Chip, Button, Snackbar, Alert,
+    Dialog, DialogTitle, DialogContent, DialogActions,
+    TextField, MenuItem
+} from "@mui/material";
 import { api } from "../api";
 import { useThemeMode } from "../context/ThemeContext";
 
@@ -19,6 +23,19 @@ export default function Logs() {
     const location = useLocation();
     const { mode } = useThemeMode();
 
+    const [addOpen, setAddOpen] = useState(false);
+    const [addForm, setAddForm] = useState({
+        ip: "",
+        computer_name: "",
+        error_type: "Software",
+        severity: "Medium",
+        description: "",
+        status: "open",
+    });
+
+    const setField = (key, value) =>
+        setAddForm(prev => ({ ...prev, [key]: value }));
+
     const [logs, setLogs] = usePersistentState("logs-page-data", []);
     const [newIssue, setNewIssue] = useState(null);
     const [showAlert, setShowAlert] = useState(false);
@@ -34,8 +51,6 @@ export default function Logs() {
     const filterCategory = params.get("category");
     const filterSeverity = params.get("severity");
     const filterAll = params.get("filter");
-
-
 
     // ============================================================
     // LOAD LOGS
@@ -176,7 +191,7 @@ export default function Logs() {
                     Logs
                 </Typography>
 
-                <Button
+                {/* <Button
                     variant="contained"
                     color="secondary"
                     startIcon={<RefreshIcon />}
@@ -184,6 +199,43 @@ export default function Logs() {
                 >
                     Refresh Logs
                 </Button>
+                <Button
+                    variant="contained"
+                    color="primary"
+                    sx={{ mr: 1 }}
+                    onClick={() => {
+                        setAddForm({
+                            ip: "",
+                            computer_name: "",
+                            error_type: "Software",
+                            severity: "Medium",
+                            description: "",
+                            status: "open",
+                        });
+                        setAddOpen(true);
+                    }}
+                >
+                    + Add Log
+                </Button> */}
+                <Box display="flex" gap={1}>
+                    <Button
+                        variant="contained"
+                        color="secondary"
+                        startIcon={<RefreshIcon />}
+                        onClick={loadLogs}
+                    >
+                        Refresh Logs
+                    </Button>
+
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={() => setAddOpen(true)}
+                    >
+                        + Add Log
+                    </Button>
+                </Box>
+
             </Box>
 
             <Box sx={{ maxWidth: 900, margin: "0 auto" }}>
@@ -255,6 +307,105 @@ export default function Logs() {
                     </Typography>
                 )}
             </Box>
+            <Dialog open={addOpen} onClose={() => setAddOpen(false)} maxWidth="sm" fullWidth>
+                <DialogTitle>Add Log</DialogTitle>
+
+                <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 1 }}>
+                    <TextField
+                        label="IP"
+                        value={addForm.ip}
+                        onChange={(e) => setField("ip", e.target.value)}
+                        placeholder="192.168.1.50"
+                        fullWidth
+                        required
+                    />
+
+                    <TextField
+                        label="Computer Name"
+                        value={addForm.computer_name}
+                        onChange={(e) => setField("computer_name", e.target.value)}
+                        placeholder="PC-003"
+                        fullWidth
+                    />
+
+                    <TextField
+                        label="Category"
+                        select
+                        value={addForm.error_type}
+                        onChange={(e) => setField("error_type", e.target.value)}
+                        fullWidth
+                    >
+                        {["Software", "Hardware", "Network", "Security", "Other"].map((opt) => (
+                            <MenuItem key={opt} value={opt}>{opt}</MenuItem>
+                        ))}
+                    </TextField>
+
+                    <TextField
+                        label="Severity"
+                        select
+                        value={addForm.severity}
+                        onChange={(e) => setField("severity", e.target.value)}
+                        fullWidth
+                    >
+                        {["Low", "Medium", "Critical"].map((opt) => (
+                            <MenuItem key={opt} value={opt}>{opt}</MenuItem>
+                        ))}
+                    </TextField>
+
+                    <TextField
+                        label="Status"
+                        select
+                        value={addForm.status}
+                        onChange={(e) => setField("status", e.target.value)}
+                        fullWidth
+                    >
+                        {["open", "investigating", "resolved"].map((opt) => (
+                            <MenuItem key={opt} value={opt}>{opt.toUpperCase()}</MenuItem>
+                        ))}
+                    </TextField>
+
+                    <TextField
+                        label="Description"
+                        value={addForm.description}
+                        onChange={(e) => setField("description", e.target.value)}
+                        fullWidth
+                        multiline
+                        minRows={3}
+                        required
+                    />
+                </DialogContent>
+
+                <DialogActions>
+                    <Button onClick={() => setAddOpen(false)}>Cancel</Button>
+
+                    <Button
+                        variant="contained"
+                        onClick={async () => {
+                            try {
+                                // ✅ כאן החיבור לבאק
+                                // אם אצלך זה נתיב אחר, תשני כאן בלבד
+                                const res = await api.post("/logs/", addForm);
+
+                                // אופציה: אם הבאק מחזיר את הלוג החדש, אפשר להכניס אותו ישר בלי reload
+                                const created = res?.data;
+                                if (created && created.id) {
+                                    setLogsRef.current((prev) => [created, ...prev]);
+                                } else {
+                                    await loadLogs();
+                                }
+
+                                setAddOpen(false);
+                            } catch (e) {
+                                console.error("Failed creating log:", e);
+                                alert("Failed to create log. Check backend endpoint/fields.");
+                            }
+                        }}
+                        disabled={!addForm.ip || !addForm.description}
+                    >
+                        Save
+                    </Button>
+                </DialogActions>
+            </Dialog>
 
             <Snackbar open={showAlert} autoHideDuration={4000} onClose={() => setShowAlert(false)}>
                 <Alert severity="error">

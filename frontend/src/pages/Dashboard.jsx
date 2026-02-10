@@ -12,6 +12,7 @@ import {
     Button,
     Snackbar,
     Alert,
+    Pagination,
 } from "@mui/material";
 import { Bar, Doughnut } from "react-chartjs-2";
 import { api } from "../api";
@@ -56,6 +57,11 @@ export default function Dashboard() {
     const wsRef = useRef(null);
     const retryTimeoutRef = useRef(null);
 
+    // Timeline UI
+    const [timelineQuery, setTimelineQuery] = useState("");
+    const [timelinePage, setTimelinePage] = useState(1);
+    const TIMELINE_PAGE_SIZE = 5;
+
     // ✅ useMemo מוודא ש-demoData לא ייחשב כתלות משתנה
     // const demoData = useMemo(
     //     () => [
@@ -82,6 +88,40 @@ export default function Dashboard() {
     //     ],
     //     []
     // );
+
+    const normalizedQuery = timelineQuery.trim().toLowerCase();
+
+    const filteredTimeline = timeline.filter((log) => {
+        if (!normalizedQuery) return true;
+
+        const haystack = [
+            log.error_type,
+            log.description,
+            log.ip,
+            log.computer_name,
+            log.severity,
+            log.status,
+        ]
+            .map((x) => String(x || "").toLowerCase())
+            .join(" ");
+
+        return haystack.includes(normalizedQuery);
+    });
+
+    const timelinePageCount = Math.max(
+        1,
+        Math.ceil(filteredTimeline.length / TIMELINE_PAGE_SIZE)
+    );
+
+    // אם חיפוש/שינוי נתונים גורם לדף לצאת מהטווח
+    useEffect(() => {
+        if (timelinePage > timelinePageCount) setTimelinePage(1);
+    }, [timelinePage, timelinePageCount]);
+
+    const pagedTimeline = filteredTimeline.slice(
+        (timelinePage - 1) * TIMELINE_PAGE_SIZE,
+        timelinePage * TIMELINE_PAGE_SIZE
+    );
 
     // ================================================================
     // LOAD DATA (Combine Real + Demo)
@@ -360,9 +400,36 @@ export default function Dashboard() {
             </Paper>
 
             {/* ISSUE TIMELINE */}
-            <Typography variant="h5" mt={4} mb={2} sx={{ color: textPrimary }}>Issue Timeline</Typography>
-            <Paper sx={{ p: 2, borderRadius: 3, background: bgCard, width: "80%", }}>
-                {timeline.map((log, index) => (
+            {/* ISSUE TIMELINE */}
+            <Box
+                sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 2,
+                    mt: 4,
+                    mb: 2,
+                    width: "80%",
+                }}
+            >
+                <Typography variant="h5" sx={{ color: textPrimary }}>
+                    Issue Timeline
+                </Typography>
+
+                <TextField
+                    size="small"
+                    placeholder="Search IP / type / message…"
+                    value={timelineQuery}
+                    onChange={(e) => {
+                        setTimelineQuery(e.target.value);
+                        setTimelinePage(1);
+                    }}
+                    sx={{ width: 280 }}
+                />
+            </Box>
+
+            <Paper sx={{ p: 2, borderRadius: 3, background: bgCard, width: "80%" }}>
+                {pagedTimeline.map((log, index) => (
                     <motion.div
                         key={`${log.id}-${index}`}
                         initial={{ opacity: 0, x: -15 }}
@@ -377,10 +444,10 @@ export default function Dashboard() {
                             color: mode === "dark" ? "#fff" : "#111",
                             cursor: "pointer",
                             borderLeft: `6px solid ${log.severity === "Critical"
-                                ? "#ef4444"
-                                : log.severity === "Medium"
-                                    ? "#facc15"
-                                    : "#4ade80"
+                                    ? "#ef4444"
+                                    : log.severity === "Medium"
+                                        ? "#facc15"
+                                        : "#4ade80"
                                 }`,
                         }}
                     >
@@ -389,7 +456,25 @@ export default function Dashboard() {
                         <span style={{ opacity: 0.7 }}>{log.ip}</span>
                     </motion.div>
                 ))}
+
+                {pagedTimeline.length === 0 && (
+                    <Typography sx={{ opacity: 0.7, color: textPrimary, py: 2 }}>
+                        No timeline items found.
+                    </Typography>
+                )}
+
+                <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
+                    <Pagination
+                        count={timelinePageCount}
+                        page={timelinePage}
+                        onChange={(_, page) => setTimelinePage(page)}
+                        color="primary"
+                        shape="rounded"
+                        size="small"
+                    />
+                </Box>
             </Paper>
+
 
             {/* LIVE ALERT SNACKBAR */}
             <Snackbar
