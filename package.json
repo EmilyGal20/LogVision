@@ -3,5 +3,19 @@
     "axios": "^1.13.2",
     "chart.js": "^4.5.1",
     "react-chartjs-2": "^5.3.1"
-  }
+  },
+  "name": "logspj",
+  "version": "1.0.0",
+  "private": true,
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  },
+  "scripts": {
+    "frontend": "npm start --prefix frontend",
+    "backend": "cd backend && python -m uvicorn app:app --reload --host 0.0.0.0 --port 8000",
+    "dev": "concurrently \"npm run frontend\" \"npm run backend\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
 }
