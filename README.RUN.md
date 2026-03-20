@@ -70,6 +70,10 @@ pip install -r requirements.txt
 python -m uvicorn app:app --reload --host 0.0.0.0 --port 8000
 Backend will be available at:
 
+----------------------
+new run way:
+npm run dev
+----------------------
 http://localhost:8000
 Swagger API docs:
 
