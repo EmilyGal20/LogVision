@@ -860,13 +860,13 @@ export default function Profile() {
     // =====================================================
     return (
         <Box className="lv-page">
-            <Box className="lv-header">
+            <Box className="lv-hero">
                 <Box>
-                    <Typography variant="h4" className="lv-header__title">
-                        My Profile
+                    <Typography variant="h4" className="lv-hero__title">
+                        ACCESS WORKSPACE
                     </Typography>
-                    <Typography className="lv-header__subtitle">
-                        Manage access and account details.
+                    <Typography className="lv-hero__subtitle">
+                        Account security, session status, and admin tools.
                     </Typography>
                 </Box>
                 <Button variant="contained" onClick={openAuthModal}>

@@ -2280,12 +2280,12 @@ export default function SearchIP() {
     // ------------------------------------------------------
     return (
         <Box className="lv-page">
-            <Box className="lv-header">
+            <Box className="lv-hero">
                 <Box>
-                    <Typography variant="h4" className="lv-header__title" sx={{ color: textColor }}>
-                        Diagnostics Console
+                    <Typography variant="h4" className="lv-hero__title" sx={{ color: textColor }}>
+                        DIAGNOSTICS WORKSTATION
                     </Typography>
-                    <Typography className="lv-header__subtitle" sx={{ color: textColor }}>
+                    <Typography className="lv-hero__subtitle" sx={{ color: textColor }}>
                         Search by IP and run live diagnostics, connectivity checks, and risk triage.
                     </Typography>
                 </Box>

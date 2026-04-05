@@ -132,13 +132,13 @@ export default function IssueDetails() {
     // ============================================================
     return (
         <Box className="lv-page" sx={{ maxWidth: "1000px", margin: "0 auto" }}>
-            <Box className="lv-header">
+            <Box className="lv-hero">
                 <Box>
-                    <Typography variant="h4" className="lv-header__title" sx={{ color: textColor }}>
-                        Issue Details
+                    <Typography variant="h4" className="lv-hero__title" sx={{ color: textColor }}>
+                        INCIDENT COMMAND
                     </Typography>
-                    <Typography className="lv-header__subtitle" sx={{ color: textColor }}>
-                        Focused incident view, timeline, and resolution actions.
+                    <Typography className="lv-hero__subtitle" sx={{ color: textColor }}>
+                        Incident summary, response actions, and intelligence feed.
                     </Typography>
                 </Box>
                 <Button variant="outlined" onClick={() => navigate("/logs")}>

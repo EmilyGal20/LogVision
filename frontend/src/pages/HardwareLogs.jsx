@@ -332,16 +332,16 @@ export default function HardwareLogs() {
     //////////////////////////////////////////////////
     return (
         <Box className="lv-page">
-            <Box className="lv-header">
+            <Box className="lv-hero">
                 <Box>
                     <Typography
                         variant="h4"
-                        className="lv-header__title"
+                        className="lv-hero__title"
                         sx={{ color: mode === "dark" ? "#f0f0f0" : "#222" }}
                     >
                         Hardware Errors Monitor
                     </Typography>
-                    <Typography className="lv-header__subtitle" sx={{ color: mode === "dark" ? "#f0f0f0" : "#222" }}>
+                    <Typography className="lv-hero__subtitle" sx={{ color: mode === "dark" ? "#f0f0f0" : "#222" }}>
                         Multi‑IP hardware health, filtering, and export controls.
                     </Typography>
                 </Box>

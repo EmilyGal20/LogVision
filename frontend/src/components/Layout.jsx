@@ -6,6 +6,8 @@ import {
     IconButton,
     Paper,
     TextField,
+    Divider,
+    Chip,
 } from "@mui/material";
 import ThemeToggle from "./ThemeToggle";
 import { Link, Outlet, useLocation } from "react-router-dom";
@@ -38,10 +40,6 @@ export default function Layout() {
     const { setSelectedIP } = useControlCenter();
     const [searchIP, setSearchIP] = useState("");
 
-    // const [open, setOpen] = useState(true);
-    // const toggleSidebar = () => setOpen((p) => !p);
-    // const sidebarWidth = open ? 240 : 76;
-
     const isMobile = useMediaQuery("(max-width:900px)");
 
     const [open, setOpen] = useState(true);          // desktop collapse
@@ -52,9 +50,7 @@ export default function Layout() {
         else setOpen((p) => !p);
     };
 
-
-    const sidebarWidth = open ? 240 : 76;
-
+    const sidebarWidth = open ? 220 : 76;
 
     const pageBg = "var(--bg-main)";
     const sidebarBg =
@@ -75,12 +71,10 @@ export default function Layout() {
             { label: "Hardware Errors", to: "/hardware", icon: <MemoryIcon /> },
         ],
         []
-
-
     );
+
     const DrawerContent = (
         <>
-            {/* LOGO + TOGGLE */}
             <Box
                 display="flex"
                 alignItems="center"
@@ -91,9 +85,9 @@ export default function Layout() {
             >
                 {(isMobile || open) ? (
                     <Box display="flex" alignItems="center" gap={1}>
-                        <VisibilityIcon sx={{ color: textColor, fontSize: 26 }} />
-                        <Typography sx={{ fontWeight: 900, color: textColor }}>
-                            LogVision
+                        <VisibilityIcon sx={{ color: textColor, fontSize: 24 }} />
+                        <Typography sx={{ fontWeight: 900, color: textColor, letterSpacing: "0.06em" }}>
+                            LOG VISION
                         </Typography>
                     </Box>
                 ) : (
@@ -105,10 +99,10 @@ export default function Layout() {
                         <MenuIcon />
                     </IconButton>
                 )}
-
             </Box>
 
-            {/* NAVIGATION */}
+            <Divider sx={{ opacity: 0.4, mx: 2 }} />
+
             <List sx={{ color: textColor, mt: 1, px: 1 }}>
                 {navItems.map((item) => {
                     const active = location.pathname === item.to;
@@ -119,9 +113,10 @@ export default function Layout() {
                             to={item.to}
                             onClick={() => isMobile && setMobileOpen(false)}
                             sx={{
-                                borderRadius: 2,
+                                borderRadius: 3,
                                 mb: 0.7,
                                 background: active ? "var(--item-active)" : "transparent",
+                                border: active ? "1px solid rgba(201,165,95,0.28)" : "1px solid transparent",
                                 "&:hover": { background: "var(--item-hover)" },
                             }}
                         >
@@ -149,46 +144,35 @@ export default function Layout() {
         </>
     );
 
-
     return (
         <Box
             sx={{
-                display: "flex",
+                display: "grid",
+                gridTemplateColumns: { xs: "1fr", md: `${sidebarWidth}px 1fr` },
                 background: pageBg,
                 height: "100vh",
                 overflow: "hidden",
             }}
         >
-            {/* ===== SIDEBAR ===== */}
-            {/* Desktop */}
             {!isMobile && (
-                <Drawer
-                    variant="permanent"
+                <Box
                     sx={{
-                        width: sidebarWidth,
-                        flexShrink: 0,
-                        "& .MuiDrawer-paper": {
-                            width: sidebarWidth,
-                            background: sidebarBg,
-                            backdropFilter: "blur(12px)",
-                            borderRight:
-                                mode === "dark"
-                                    ? "1px solid rgba(255,255,255,0.08)"
-                                    : "1px solid rgba(150,170,200,0.35)",
-                            overflowX: "hidden",
-                            transition: "width 0.25s ease",
-
-
-
-
-                        },
+                        height: "100vh",
+                        backdropFilter: "blur(14px)",
+                        background: sidebarBg,
+                        borderRight:
+                            mode === "dark"
+                                ? "1px solid rgba(255,255,255,0.08)"
+                                : "1px solid rgba(150,170,200,0.35)",
+                        display: "flex",
+                        flexDirection: "column",
+                        overflow: "hidden",
                     }}
                 >
                     {DrawerContent}
-                </Drawer>
+                </Box>
             )}
 
-            {/* Mobile */}
             {isMobile && (
                 <Drawer
                     variant="temporary"
@@ -197,7 +181,7 @@ export default function Layout() {
                     ModalProps={{ keepMounted: true }}
                     sx={{
                         "& .MuiDrawer-paper": {
-                            width: "min(86vw, 300px)",
+                            width: "min(86vw, 320px)",
                             background: sidebarBg,
                             backdropFilter: "blur(12px)",
                             borderRight:
@@ -207,7 +191,6 @@ export default function Layout() {
                             borderTopRightRadius: 22,
                             borderBottomRightRadius: 22,
                             paddingBottom: "env(safe-area-inset-bottom)",
-
                         },
                     }}
                 >
@@ -215,96 +198,80 @@ export default function Layout() {
                 </Drawer>
             )}
 
-
-            {/* ===== CONTENT AREA (TOPBAR + MAIN) ===== */}
-
             <Box
                 className="app-scroll"
                 sx={{
-                    flexGrow: 1,
                     minWidth: 0,
                     display: "flex",
                     flexDirection: "column",
                     overflow: "auto",
                 }}
             >
-                {/* TOPBAR */}
                 <Paper
                     elevation={0}
                     sx={{
                         mx: { xs: 1, md: 2 },
                         mt: { xs: 1, md: 2 },
                         mb: { xs: 1, md: 1.5 },
-                        px: { xs: 1.5, md: 2 },
-                        py: { xs: 1, md: 1.3 },
-                        borderRadius: { xs: 4, md: 4 },
+                        px: { xs: 1.5, md: 2.5 },
+                        py: { xs: 1.2, md: 1.6 },
+                        borderRadius: { xs: 4, md: 5 },
                         background: topbarBg,
                         backdropFilter: "blur(16px)",
                         border:
                             mode === "dark"
                                 ? "1px solid rgba(139,92,246,0.18)"
                                 : "1px solid rgba(140,160,220,0.35)",
-                        display: "flex",
+                        display: "grid",
+                        gridTemplateColumns: { xs: "1fr", md: "1.2fr 1fr" },
+                        gap: 1.5,
                         alignItems: "center",
-                        gap: { xs: 1, md: 2 },
-                        flexWrap: "wrap",
-                        flexDirection: { xs: "column", sm: "row" },
-                        justifyContent: { xs: "flex-start", sm: "space-between" },
                         position: "sticky",
                         top: 10,
                         zIndex: 20,
                     }}
                 >
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                        {isMobile && (
+                            <IconButton
+                                onClick={() => setMobileOpen(true)}
+                                sx={{
+                                    color: textColor,
+                                    width: 40,
+                                    height: 40,
+                                    borderRadius: 2.5,
+                                    background: mode === "dark" ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)",
+                                    border:
+                                        mode === "dark"
+                                            ? "1px solid rgba(139,92,246,0.18)"
+                                            : "1px solid rgba(99,102,241,0.18)",
+                                }}
+                            >
+                                <MenuIcon />
+                            </IconButton>
+                        )}
 
-
-                    <Box
-                        sx={{
-                            width: "100%",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            gap: 1,
-                        }}
-                    >
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                            {isMobile && (
-                                <IconButton
-                                    onClick={() => setMobileOpen(true)}
-                                    sx={{
-                                        color: textColor,
-                                        width: 40,
-                                        height: 40,
-                                        borderRadius: 2.5,
-                                        background: mode === "dark" ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)",
-                                        border:
-                                            mode === "dark"
-                                                ? "1px solid rgba(139,92,246,0.18)"
-                                                : "1px solid rgba(99,102,241,0.18)",
-                                    }}
-                                >
-                                    <MenuIcon />
-                                </IconButton>
-                            )}
-
-                            <Typography sx={{ fontWeight: 950, color: textColor, fontSize: { xs: 18, sm: 20 } }}>
-                                Control Center
+                        <Box>
+                            <Typography sx={{ fontWeight: 900, color: textColor, fontSize: { xs: 18, sm: 20 }, letterSpacing: "0.08em" }}>
+                                LOG VISION
+                            </Typography>
+                            <Typography sx={{ color: textColor, opacity: 0.7, fontSize: 12 }}>
+                                Command Console
                             </Typography>
                         </Box>
-
-                        {isMobile && <ThemeToggle />}
                     </Box>
 
-
-                    <Box sx={{ width: "100%", display: "flex", justifyContent: "center" }}>
+                    <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1, alignItems: "center", flexWrap: "wrap" }}>
                         <Box
                             sx={{
-                                width: "100%",
-                                maxWidth: { xs: "100%", sm: 560 },
+                                flex: 1,
+                                minWidth: 200,
+                                maxWidth: 520,
                                 display: "flex",
                                 alignItems: "center",
                                 gap: 1,
-                                px: { xs: 1.4, sm: 2 },
-                                py: { xs: 0.7, sm: 0.8 },
+                                px: { xs: 1.2, sm: 2 },
+                                py: { xs: 0.6, sm: 0.8 },
                                 borderRadius: 999,
                                 background: mode === "dark" ? "rgba(0,0,0,0.30)" : "rgba(255,255,255,0.8)",
                                 border:
@@ -313,7 +280,6 @@ export default function Layout() {
                                         : "1px solid rgba(140,160,220,0.25)",
                             }}
                         >
-
                             <SearchIcon sx={{ color: textColor, opacity: 0.85 }} />
                             <TextField
                                 value={searchIP}
@@ -323,20 +289,24 @@ export default function Layout() {
                                         setSelectedIP(searchIP);
                                     }
                                 }}
-                                placeholder="Search IP / Computer / Errorâ€¦"
+                                placeholder="Search IP / Computer / Error…"
                                 variant="standard"
                                 InputProps={{ disableUnderline: true }}
-                                sx={{
-                                    flex: 1,
-                                    minWidth: 0,
-                                }}
+                                sx={{ flex: 1, minWidth: 0 }}
                             />
-
                         </Box>
+                        {!isMobile && (
+                            <Chip
+                                label={mode === "dark" ? "Dark Mode" : "Light Mode"}
+                                sx={{ fontWeight: 800 }}
+                            />
+                        )}
+                        {!isMobile && <ThemeToggle />}
                     </Box>
-
                 </Paper>
-                {/* MAIN */}
+
+                <Divider sx={{ opacity: 0.25, mx: { xs: 1, md: 2 } }} />
+
                 <Box
                     component="main"
                     sx={{
@@ -348,7 +318,7 @@ export default function Layout() {
                         background: "transparent",
                     }}
                 >
-                    <Box sx={{ maxWidth: 1240, mx: "auto", width: "100%", display: "flex", flexDirection: "column", gap: 2 }}>
+                    <Box sx={{ maxWidth: 1320, mx: "auto", width: "100%", display: "flex", flexDirection: "column", gap: 2 }}>
                         <LiveHardwarePanel />
                         <Outlet />
                     </Box>

@@ -181,8 +181,10 @@ body.dark .MuiPaper-root:hover {
   gap: 16px;
   padding: 16px 18px;
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(201, 165, 95, 0.18);
+  background:
+    linear-gradient(135deg, rgba(201, 165, 95, 0.08), rgba(182, 72, 82, 0.06)),
+    rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(201, 165, 95, 0.26);
   backdrop-filter: blur(12px);
 }
 
@@ -203,21 +205,94 @@ body.dark .MuiPaper-root:hover {
   padding: 12px 14px;
   border-radius: 16px;
   border: 1px solid rgba(201, 165, 95, 0.16);
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.03);
   backdrop-filter: blur(10px);
 }
 
 .lv-panel {
   padding: 16px;
   border-radius: 18px;
-  border: 1px solid rgba(201, 165, 95, 0.16);
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(201, 165, 95, 0.2);
+  background:
+    radial-gradient(120% 120% at 0% 0%, rgba(201, 165, 95, 0.06), transparent 55%),
+    rgba(255, 255, 255, 0.04);
   backdrop-filter: blur(10px);
+  position: relative;
+  overflow: hidden;
 }
 
 .lv-grid {
   display: grid;
   gap: 16px;
+}
+
+/* ================================
+   TEMPLATE REPLACEMENT SYSTEM
+================================ */
+.lv-canvas {
+  position: relative;
+  border-radius: 22px;
+  padding: 16px;
+  background:
+    radial-gradient(120% 120% at 0% 0%, rgba(201, 165, 95, 0.10), transparent 55%),
+    radial-gradient(120% 120% at 100% 0%, rgba(182, 72, 82, 0.10), transparent 55%),
+    rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(201, 165, 95, 0.22);
+  backdrop-filter: blur(12px);
+}
+
+.lv-hero {
+  padding: 20px 22px;
+  border-radius: 22px;
+  background:
+    linear-gradient(120deg, rgba(201, 165, 95, 0.18), rgba(182, 72, 82, 0.10)),
+    rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(201, 165, 95, 0.35);
+}
+
+.lv-hero__title {
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.lv-hero__subtitle {
+  opacity: 0.75;
+}
+
+.lv-deck {
+  display: grid;
+  gap: 16px;
+}
+
+.lv-module {
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(201, 165, 95, 0.22);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 60%),
+    rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(10px);
+}
+
+.lv-strip {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(201, 165, 95, 0.18);
+}
+
+/* New command-deck frame */
+.lv-panel::after {
+  content: \"\";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 50%);
 }
 
 ody.dark .MuiPaper-root::before {

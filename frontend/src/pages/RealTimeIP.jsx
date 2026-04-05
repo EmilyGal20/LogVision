@@ -862,16 +862,16 @@ export default function RealtimeIP() {
     ——————————————————————————— */
     return (
         <Box className="lv-page">
-            <Box className="lv-header">
+            <Box className="lv-hero">
                 <Box>
                     <Typography
                         variant="h4"
-                        className="lv-header__title"
+                        className="lv-hero__title"
                         sx={{ color: textColor, fontWeight: "bold", letterSpacing: "0.5px" }}
                     >
-                        Realtime IP Monitoring
+                        REALTIME MONITOR
                     </Typography>
-                    <Typography className="lv-header__subtitle" sx={{ color: textColor }}>
+                    <Typography className="lv-hero__subtitle" sx={{ color: textColor }}>
                         Live connectivity, availability score, and speed telemetry.
                     </Typography>
                 </Box>

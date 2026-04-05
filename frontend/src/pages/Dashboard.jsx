@@ -306,17 +306,17 @@ export default function Dashboard() {
     // ====================================================================
     return (
         <Box className="lv-page">
-            <Box className="lv-header">
+            <Box className="lv-hero">
                 <Box>
-                    <Typography variant="h4" className="lv-header__title" sx={{ color: textPrimary }}>
-                        Command Center
+                    <Typography variant="h4" className="lv-hero__title" sx={{ color: textPrimary }}>
+                        COMMAND OVERVIEW
                     </Typography>
-                    <Typography className="lv-header__subtitle" sx={{ color: textPrimary }}>
-                        Live overview of incidents, severity, and category health.
+                    <Typography className="lv-hero__subtitle" sx={{ color: textPrimary }}>
+                        Executive monitoring surface for incidents and operational health.
                     </Typography>
                 </Box>
 
-                <Box className="lv-toolbar">
+                <Box className="lv-strip">
                     <TextField
                         label="Filter by IP"
                         value={ip}

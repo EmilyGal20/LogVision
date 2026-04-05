@@ -186,17 +186,17 @@ export default function Logs() {
 
     return (
         <Box className="lv-page">
-            <Box className="lv-header">
+            <Box className="lv-hero">
                 <Box>
-                    <Typography variant="h4" className="lv-header__title" sx={{ color: textColor }}>
-                        Logs
+                    <Typography variant="h4" className="lv-hero__title" sx={{ color: textColor }}>
+                        LOG INTELLIGENCE
                     </Typography>
-                    <Typography className="lv-header__subtitle" sx={{ color: textColor }}>
-                        Live issue stream and manual log creation.
+                    <Typography className="lv-hero__subtitle" sx={{ color: textColor }}>
+                        Incident stream with live severity and status signals.
                     </Typography>
                 </Box>
 
-                <Box className="lv-toolbar">
+                <Box className="lv-strip">
                     <Button
                         variant="contained"
                         color="secondary"
@@ -218,6 +218,27 @@ export default function Logs() {
 
             <Paper className="lv-panel">
                 <Box sx={{ display: "grid", gap: 1.5 }}>
+                    <Box
+                        sx={{
+                            display: "grid",
+                            gridTemplateColumns: { xs: "1fr", md: "48px 1fr 140px 120px" },
+                            gap: 2,
+                            px: 1,
+                            py: 1,
+                            borderRadius: 10,
+                            background: "rgba(255,255,255,0.03)",
+                            border: "1px solid rgba(201,165,95,0.16)",
+                            fontWeight: 800,
+                            letterSpacing: "0.04em",
+                            textTransform: "uppercase",
+                            fontSize: 12,
+                        }}
+                    >
+                        <Box />
+                        <Typography sx={{ color: textColor }}>Incident</Typography>
+                        <Typography sx={{ color: textColor }}>IP / Time</Typography>
+                        <Typography sx={{ color: textColor }}>Status</Typography>
+                    </Box>
                     {logs.map((log, i) => {
                         const statusKey = (log.status || "open").toLowerCase();
                         const status = STATUS_MAP[statusKey] || STATUS_MAP.open;
@@ -229,7 +250,7 @@ export default function Logs() {
                                     p: 2.5,
                                     borderRadius: "14px",
                                     display: "grid",
-                                    gridTemplateColumns: { xs: "1fr", md: "48px 1fr auto" },
+                                    gridTemplateColumns: { xs: "1fr", md: "48px 1fr 140px 120px" },
                                     alignItems: "center",
                                     gap: 2,
                                     cursor: "pointer",
@@ -255,21 +276,15 @@ export default function Logs() {
                                     <Typography sx={{ opacity: 0.82, color: textColor, mt: 0.5 }}>
                                         {log.description}
                                     </Typography>
+                                </Box>
 
-                                    <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mt: 1 }}>
-                                        <Typography sx={{ color: textColor }}>
-                                            IP: <b>{log.ip}</b>
-                                        </Typography>
-                                        <Typography
-                                            sx={{
-                                                fontSize: "0.75rem",
-                                                opacity: 0.6,
-                                                color: textColor,
-                                            }}
-                                        >
-                                            {new Date(log.created_at || Date.now()).toLocaleString()}
-                                        </Typography>
-                                    </Box>
+                                <Box sx={{ display: "grid", gap: 0.5 }}>
+                                    <Typography sx={{ color: textColor, fontWeight: 700 }}>
+                                        {log.ip}
+                                    </Typography>
+                                    <Typography sx={{ fontSize: "0.75rem", opacity: 0.6, color: textColor }}>
+                                        {new Date(log.created_at || Date.now()).toLocaleString()}
+                                    </Typography>
                                 </Box>
 
                                 <Chip
@@ -292,59 +307,64 @@ export default function Logs() {
             <Dialog open={addOpen} onClose={() => setAddOpen(false)} maxWidth="sm" fullWidth>
                 <DialogTitle>Add Log</DialogTitle>
 
-                <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 1 }}>
-                    <TextField
-                        label="IP"
-                        value={addForm.ip}
-                        onChange={(e) => setField("ip", e.target.value)}
-                        placeholder="192.168.1.50"
-                        fullWidth
-                        required
-                    />
+                <DialogContent sx={{ pt: 1 }}>
+                    <Typography sx={{ opacity: 0.7, mb: 2 }}>
+                        Create a new incident record for the selected system.
+                    </Typography>
+                    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2 }}>
+                        <TextField
+                            label="IP"
+                            value={addForm.ip}
+                            onChange={(e) => setField("ip", e.target.value)}
+                            placeholder="192.168.1.50"
+                            fullWidth
+                            required
+                        />
 
-                    <TextField
-                        label="Computer Name"
-                        value={addForm.computer_name}
-                        onChange={(e) => setField("computer_name", e.target.value)}
-                        placeholder="PC-003"
-                        fullWidth
-                    />
+                        <TextField
+                            label="Computer Name"
+                            value={addForm.computer_name}
+                            onChange={(e) => setField("computer_name", e.target.value)}
+                            placeholder="PC-003"
+                            fullWidth
+                        />
 
-                    <TextField
-                        label="Category"
-                        select
-                        value={addForm.error_type}
-                        onChange={(e) => setField("error_type", e.target.value)}
-                        fullWidth
-                    >
-                        {["Software", "Hardware", "Network", "Security", "Other"].map((opt) => (
-                            <MenuItem key={opt} value={opt}>{opt}</MenuItem>
-                        ))}
-                    </TextField>
+                        <TextField
+                            label="Category"
+                            select
+                            value={addForm.error_type}
+                            onChange={(e) => setField("error_type", e.target.value)}
+                            fullWidth
+                        >
+                            {["Software", "Hardware", "Network", "Security", "Other"].map((opt) => (
+                                <MenuItem key={opt} value={opt}>{opt}</MenuItem>
+                            ))}
+                        </TextField>
 
-                    <TextField
-                        label="Severity"
-                        select
-                        value={addForm.severity}
-                        onChange={(e) => setField("severity", e.target.value)}
-                        fullWidth
-                    >
-                        {["Low", "Medium", "Critical"].map((opt) => (
-                            <MenuItem key={opt} value={opt}>{opt}</MenuItem>
-                        ))}
-                    </TextField>
+                        <TextField
+                            label="Severity"
+                            select
+                            value={addForm.severity}
+                            onChange={(e) => setField("severity", e.target.value)}
+                            fullWidth
+                        >
+                            {["Low", "Medium", "Critical"].map((opt) => (
+                                <MenuItem key={opt} value={opt}>{opt}</MenuItem>
+                            ))}
+                        </TextField>
 
-                    <TextField
-                        label="Status"
-                        select
-                        value={addForm.status}
-                        onChange={(e) => setField("status", e.target.value)}
-                        fullWidth
-                    >
-                        {["open", "investigating", "resolved"].map((opt) => (
-                            <MenuItem key={opt} value={opt}>{opt.toUpperCase()}</MenuItem>
-                        ))}
-                    </TextField>
+                        <TextField
+                            label="Status"
+                            select
+                            value={addForm.status}
+                            onChange={(e) => setField("status", e.target.value)}
+                            fullWidth
+                        >
+                            {["open", "investigating", "resolved"].map((opt) => (
+                                <MenuItem key={opt} value={opt}>{opt.toUpperCase()}</MenuItem>
+                            ))}
+                        </TextField>
+                    </Box>
 
                     <TextField
                         label="Description"
@@ -354,6 +374,7 @@ export default function Logs() {
                         multiline
                         minRows={3}
                         required
+                        sx={{ mt: 2 }}
                     />
                 </DialogContent>
 

@@ -768,32 +768,40 @@ export default function AdminPanel() {
 
     return (
         <Box className="lv-page">
-            <Box className="lv-header">
-                <Box>
-                    <Typography variant="h4" className="lv-header__title" sx={{ color: text, fontWeight: 800 }}>
-                        Admin Control Center
-                    </Typography>
-                    <Typography className="lv-header__subtitle" sx={{ color: text }}>
-                        Users, devices, alerts, and system settings.
-                    </Typography>
-                </Box>
+            <Box className="lv-hero">
+                <Typography variant="h4" className="lv-hero__title" sx={{ color: text }}>
+                    ADMIN CONSOLE
+                </Typography>
+                <Typography className="lv-hero__subtitle" sx={{ color: text }}>
+                    Enterprise control plane for users, devices, and policy.
+                </Typography>
             </Box>
 
-            <Paper className="lv-panel" sx={{ background: card }}>
-                <Tabs
-                    value={tab}
-                    onChange={(e, v) => setTab(v)}
-                    centered
-                    textColor="secondary"
-                    indicatorColor="secondary"
-                >
-                    <Tab label="Overview" />
-                    <Tab label="Users" />
-                    <Tab label="Devices" />
-                    <Tab label="Alerts" />
-                    <Tab label="Settings" />
-                </Tabs>
-            </Paper>
+            <Box
+                sx={{
+                    display: "grid",
+                    gridTemplateColumns: { xs: "1fr", lg: "220px 1fr" },
+                    gap: 2,
+                }}
+            >
+                <Paper className="lv-panel" sx={{ background: card, padding: 1 }}>
+                    <Tabs
+                        value={tab}
+                        onChange={(e, v) => setTab(v)}
+                        orientation="vertical"
+                        textColor="secondary"
+                        indicatorColor="secondary"
+                        sx={{ minHeight: 320 }}
+                    >
+                        <Tab label="Overview" />
+                        <Tab label="Users" />
+                        <Tab label="Devices" />
+                        <Tab label="Alerts" />
+                        <Tab label="Settings" />
+                    </Tabs>
+                </Paper>
+
+                <Box className="lv-deck">
 
             {tab === 0 && (
                 <Box>
@@ -1078,6 +1086,9 @@ export default function AdminPanel() {
                     </Paper>
                 </Box>
             )}
+
+                </Box>
+            </Box>
 
             {/* ---------------- Diagnostics Modal ---------------- */}
             <Modal open={openDiagModal} onClose={() => setOpenDiagModal(false)}>
