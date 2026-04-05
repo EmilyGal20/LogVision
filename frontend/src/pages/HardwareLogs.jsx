@@ -331,17 +331,34 @@ export default function HardwareLogs() {
     // UI Rendering
     //////////////////////////////////////////////////
     return (
-        <Box>
-            <Typography
-                variant="h4"
-                mb={3}
-                sx={{ color: mode === "dark" ? "#f0f0f0" : "#222" }}
-            >
-                Hardware Errors Monitor
-            </Typography>
+        <Box className="lv-page">
+            <Box className="lv-header">
+                <Box>
+                    <Typography
+                        variant="h4"
+                        className="lv-header__title"
+                        sx={{ color: mode === "dark" ? "#f0f0f0" : "#222" }}
+                    >
+                        Hardware Errors Monitor
+                    </Typography>
+                    <Typography className="lv-header__subtitle" sx={{ color: mode === "dark" ? "#f0f0f0" : "#222" }}>
+                        Multi‑IP hardware health, filtering, and export controls.
+                    </Typography>
+                </Box>
+            </Box>
 
-            {/* FILTERS */}
-            <Paper sx={{ padding: 3, mb: 3 }}>
+            <Box
+                sx={{
+                    display: "grid",
+                    gridTemplateColumns: { xs: "1fr", lg: "1fr 1.5fr" },
+                    gap: 2,
+                }}
+            >
+                {/* FILTERS */}
+                <Paper className="lv-panel">
+                    <Typography variant="h6" sx={{ mb: 2, fontWeight: 800 }}>
+                        Filters & Target IPs
+                    </Typography>
                 <Box display="flex" gap={2} mb={2}>
                     <TextField
                         label="Add IP"
@@ -435,28 +452,29 @@ export default function HardwareLogs() {
                         Clear
                     </Button>
                 </Box>
-            </Paper>
+                </Paper>
 
-            {/* TABS */}
-            <Paper sx={{ mb: 2 }}>
-                <Tabs
-                    value={tab}
-                    onChange={(e, val) => setTab(val)}
-                    variant="scrollable"
-                >
-                    <Tab label="All" value="all" />
-                    <Tab label="CPU" value="cpu" />
-                    <Tab label="RAM" value="ram" />
-                    <Tab label="GPU" value="gpu" />
-                    <Tab label="SSD/Disk" value="ssd" />
-                    <Tab label="Fan" value="fan" />
-                </Tabs>
-            </Paper>
+                <Box sx={{ display: "grid", gap: 2 }}>
+                    {/* TABS */}
+                    <Paper className="lv-panel" sx={{ padding: 0 }}>
+                        <Tabs
+                            value={tab}
+                            onChange={(e, val) => setTab(val)}
+                            variant="scrollable"
+                        >
+                            <Tab label="All" value="all" />
+                            <Tab label="CPU" value="cpu" />
+                            <Tab label="RAM" value="ram" />
+                            <Tab label="GPU" value="gpu" />
+                            <Tab label="SSD/Disk" value="ssd" />
+                            <Tab label="Fan" value="fan" />
+                        </Tabs>
+                    </Paper>
 
-            {/* TABLE */}
-            <Fade in timeout={400}>
-                <TableContainer component={Paper}>
-                    <Table>
+                    {/* TABLE */}
+                    <Fade in timeout={400}>
+                        <TableContainer component={Paper} className="lv-panel">
+                            <Table>
                         <TableHead>
                             <TableRow>
                                 <TableCell>ID</TableCell>
@@ -513,21 +531,23 @@ export default function HardwareLogs() {
                                 ))
                             )}
                         </TableBody>
-                    </Table>
-                </TableContainer>
-            </Fade>
+                            </Table>
+                        </TableContainer>
+                    </Fade>
 
-            {/* PAGINATION */}
-            <Box mt={3} display="flex" justifyContent="center">
-                <Pagination
-                    count={Math.ceil(logs.length / rowsPerPage)}
-                    page={page}
-                    onChange={(e, val) => setPage(val)}
-                />
+                    {/* PAGINATION */}
+                    <Box mt={1} display="flex" justifyContent="center">
+                        <Pagination
+                            count={Math.ceil(logs.length / rowsPerPage)}
+                            page={page}
+                            onChange={(e, val) => setPage(val)}
+                        />
+                    </Box>
+                </Box>
             </Box>
 
             {/* STATS + CHARTS */}
-            <Box mt={5} p={3} component={Paper}>
+            <Box mt={2} p={3} component={Paper} className="lv-panel">
                 <Typography variant="h5" mb={2}>
                     📊 Hardware Stats Dashboard
                 </Typography>

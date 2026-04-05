@@ -767,12 +767,19 @@ export default function AdminPanel() {
     }, [diagDevice]);
 
     return (
-        <Box sx={{ width: "100%", p: 3 }}>
-            <Typography variant="h4" sx={{ color: text, fontWeight: 700, mb: 3 }}>
-                Admin Panel
-            </Typography>
+        <Box className="lv-page">
+            <Box className="lv-header">
+                <Box>
+                    <Typography variant="h4" className="lv-header__title" sx={{ color: text, fontWeight: 800 }}>
+                        Admin Control Center
+                    </Typography>
+                    <Typography className="lv-header__subtitle" sx={{ color: text }}>
+                        Users, devices, alerts, and system settings.
+                    </Typography>
+                </Box>
+            </Box>
 
-            <Paper sx={{ background: card, mb: 3, borderRadius: "14px" }}>
+            <Paper className="lv-panel" sx={{ background: card }}>
                 <Tabs
                     value={tab}
                     onChange={(e, v) => setTab(v)}
@@ -791,7 +798,7 @@ export default function AdminPanel() {
             {tab === 0 && (
                 <Box>
                     <Box display="grid" gridTemplateColumns="repeat(3, 1fr)" gap={3} mb={3}>
-                        <Paper sx={{ p: 3, borderRadius: 4, background: card, backdropFilter: "blur(6px)" }}>
+                        <Paper sx={{ p: 3, borderRadius: 4, background: card, backdropFilter: "blur(6px)", border: "1px solid rgba(201,165,95,0.16)" }}>
                             <Typography sx={{ color: text, mb: 2, fontWeight: 600 }}>
                                 System Health
                             </Typography>
@@ -803,7 +810,7 @@ export default function AdminPanel() {
                             />
                         </Paper>
 
-                        <Paper sx={{ p: 3, borderRadius: 4, background: card }}>
+                        <Paper sx={{ p: 3, borderRadius: 4, background: card, border: "1px solid rgba(201,165,95,0.16)" }}>
                             <Typography sx={{ color: text, mb: 2, fontWeight: 600 }}>
                                 Registered Users
                             </Typography>
@@ -812,7 +819,7 @@ export default function AdminPanel() {
                             </Typography>
                         </Paper>
 
-                        <Paper sx={{ p: 3, borderRadius: 4, background: card }}>
+                        <Paper sx={{ p: 3, borderRadius: 4, background: card, border: "1px solid rgba(201,165,95,0.16)" }}>
                             <Typography sx={{ color: text, mb: 2, fontWeight: 600 }}>
                                 Active Alerts
                             </Typography>
@@ -822,7 +829,7 @@ export default function AdminPanel() {
                         </Paper>
                     </Box>
 
-                    <Paper sx={{ p: 3, borderRadius: 4, background: card, mb: 3 }}>
+                    <Paper sx={{ p: 3, borderRadius: 4, background: card, mb: 3, border: "1px solid rgba(201,165,95,0.16)" }}>
                         <Typography sx={{ color: text, mb: 2, fontWeight: 600 }}>
                             CPU Temperature Overview
                         </Typography>

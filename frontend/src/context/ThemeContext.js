@@ -84,13 +84,15 @@ export default function CustomThemeProvider({ children }) {
 
                 typography: {
                     fontFamily: `"Inter","Segoe UI","Roboto",sans-serif`,
-                    h4: {
-                        fontWeight: 700,
-                        letterSpacing: "-0.02em",
-                    },
+                    h1: { fontWeight: 800, letterSpacing: "-0.03em" },
+                    h2: { fontWeight: 800, letterSpacing: "-0.03em" },
+                    h3: { fontWeight: 750, letterSpacing: "-0.02em" },
+                    h4: { fontWeight: 700, letterSpacing: "-0.02em" },
+                    h5: { fontWeight: 700, letterSpacing: "-0.015em" },
+                    h6: { fontWeight: 700, letterSpacing: "-0.01em" },
                     button: {
                         textTransform: "none",
-                        fontWeight: 600,
+                        fontWeight: 700,
                     },
                 },
 
@@ -113,6 +115,87 @@ export default function CustomThemeProvider({ children }) {
                                         ? "0 4px 20px rgba(0,0,0,0.06)"
                                         : "none",
 
+                            },
+                        },
+                    },
+                    MuiCard: {
+                        styleOverrides: {
+                            root: {
+                                borderRadius: 18,
+                                backgroundImage: "none",
+                            },
+                        },
+                    },
+                    MuiTextField: {
+                        defaultProps: { size: "small", variant: "outlined" },
+                    },
+                    MuiInputBase: {
+                        styleOverrides: {
+                            root: {
+                                borderRadius: 10,
+                            },
+                        },
+                    },
+                    MuiOutlinedInput: {
+                        styleOverrides: {
+                            root: {
+                                borderRadius: 12,
+                            },
+                            notchedOutline: {
+                                borderWidth: 1,
+                            },
+                        },
+                    },
+                    MuiButton: {
+                        styleOverrides: {
+                            root: {
+                                borderRadius: "12px",
+                                paddingInline: 16,
+                                minHeight: 40,
+                                boxShadow:
+                                    mode === "light"
+                                        ? "0 6px 16px rgba(0,0,0,0.10)"
+                                        : "none",
+                            },
+                            contained: {
+                                fontWeight: 800,
+                                letterSpacing: "0.01em",
+                            },
+                        },
+                    },
+                    MuiChip: {
+                        styleOverrides: {
+                            root: {
+                                fontWeight: 700,
+                                borderRadius: 999,
+                            },
+                        },
+                    },
+                    MuiTab: {
+                        styleOverrides: {
+                            root: {
+                                fontWeight: 700,
+                                letterSpacing: "0.02em",
+                                minHeight: 44,
+                            },
+                        },
+                    },
+                    MuiTabs: {
+                        styleOverrides: {
+                            root: {
+                                minHeight: 44,
+                            },
+                            indicator: {
+                                height: 3,
+                                borderRadius: 4,
+                            },
+                        },
+                    },
+                    MuiPaginationItem: {
+                        styleOverrides: {
+                            root: {
+                                borderRadius: 10,
+                                fontWeight: 700,
                             },
                         },
                     },
@@ -161,26 +244,6 @@ export default function CustomThemeProvider({ children }) {
                         },
                     },
 
-
-                    MuiButton: {
-                        styleOverrides: {
-                            root: {
-                                borderRadius: "10px",
-                                boxShadow:
-                                    mode === "light"
-                                        ? "0 2px 8px rgba(0,0,0,0.08)"
-                                        : "none",
-                            },
-                        },
-                    },
-                    MuiTab: {
-                        styleOverrides: {
-                            root: {
-                                fontWeight: 600,
-                                letterSpacing: "0.02em",
-                            },
-                        },
-                    },
 
                 },
             }),

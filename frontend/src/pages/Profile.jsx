@@ -859,60 +859,84 @@ export default function Profile() {
     // UI
     // =====================================================
     return (
-        <Box>
-            <Typography variant="h4" mb={3} fontWeight="bold">
-                My Profile
-            </Typography>
+        <Box className="lv-page">
+            <Box className="lv-header">
+                <Box>
+                    <Typography variant="h4" className="lv-header__title">
+                        My Profile
+                    </Typography>
+                    <Typography className="lv-header__subtitle">
+                        Manage access and account details.
+                    </Typography>
+                </Box>
+                <Button variant="contained" onClick={openAuthModal}>
+                    {user ? "Switch Account" : "Login / Create Account"}
+                </Button>
+            </Box>
 
-            <Button variant="contained" sx={{ mb: 2 }} onClick={openAuthModal}>
-                {user ? "Switch Account" : "Login / Create Account"}
-            </Button>
-
-            {user?.role === "admin" && (
-                <Typography sx={{ color: "green", fontWeight: "bold", mb: 2 }}>
-                    ✅ Admin is connected
-                </Typography>
-            )}
-
-            {user && (
-                <Paper sx={{ padding: 3, maxWidth: 340 }}>
-                    <p>
-                        <b>Username:</b> {user.username}
-                    </p>
-                    <p>
-                        <b>Full Name:</b> {user.full_name || "-"}
-                    </p>
-                    <p>
-                        <b>Role:</b> {user.role}
-                    </p>
-
-                    <Button
-                        variant="outlined"
-                        color="error"
-                        sx={{ mt: 2 }}
-                        onClick={handleLogout}
-                    >
-                        Logout
-                    </Button>
-
-                    {user.role === "admin" && (
-                        <Box sx={{ mt: 3 }}>
-                            <Typography variant="h6" fontWeight="bold">
-                                Admin Tools
-                            </Typography>
-
-                            <Button
-                                variant="contained"
-                                sx={{ mt: 1 }}
-                                component={Link}
-                                to="/admin"
-                            >
-                                Go to Admin Panel
-                            </Button>
-                        </Box>
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2 }}>
+                <Paper className="lv-panel">
+                    <Typography variant="h6" sx={{ mb: 1, fontWeight: 800 }}>
+                        Access Status
+                    </Typography>
+                    <Typography sx={{ opacity: 0.7, mb: 2 }}>
+                        Login state and account role.
+                    </Typography>
+                    {user?.role === "admin" && (
+                        <Typography sx={{ color: "green", fontWeight: "bold", mb: 2 }}>
+                            ✅ Admin is connected
+                        </Typography>
+                    )}
+                    {!user && (
+                        <Typography sx={{ opacity: 0.8 }}>
+                            No active session. Use the button above to authenticate.
+                        </Typography>
                     )}
                 </Paper>
-            )}
+
+                {user && (
+                    <Paper className="lv-panel">
+                        <Typography variant="h6" sx={{ mb: 2, fontWeight: 800 }}>
+                            Profile Details
+                        </Typography>
+                        <p>
+                            <b>Username:</b> {user.username}
+                        </p>
+                        <p>
+                            <b>Full Name:</b> {user.full_name || "-"}
+                        </p>
+                        <p>
+                            <b>Role:</b> {user.role}
+                        </p>
+
+                        <Button
+                            variant="outlined"
+                            color="error"
+                            sx={{ mt: 2 }}
+                            onClick={handleLogout}
+                        >
+                            Logout
+                        </Button>
+
+                        {user.role === "admin" && (
+                            <Box sx={{ mt: 3 }}>
+                                <Typography variant="h6" fontWeight="bold">
+                                    Admin Tools
+                                </Typography>
+
+                                <Button
+                                    variant="contained"
+                                    sx={{ mt: 1 }}
+                                    component={Link}
+                                    to="/admin"
+                                >
+                                    Go to Admin Panel
+                                </Button>
+                            </Box>
+                        )}
+                    </Paper>
+                )}
+            </Box>
 
             {/* 🔐 LOGIN/REGISTER MODAL */}
             <Modal open={open} onClose={handleClose}>
@@ -927,6 +951,7 @@ export default function Profile() {
                         borderRadius: 2,
                         boxShadow: 24,
                         p: 3,
+                        border: "1px solid rgba(201,165,95,0.18)",
                     }}
                 >
                     <Typography variant="h6" mb={2}>

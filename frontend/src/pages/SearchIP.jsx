@@ -2279,113 +2279,109 @@ export default function SearchIP() {
     // RENDER UI
     // ------------------------------------------------------
     return (
-        <Box
-            sx={{
-                padding: 4,
-                width: "100%",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 3,
-            }}
-        >
-            <Typography variant="h4" fontWeight="bold" sx={{ color: textColor }}>
-                Search Logs
-            </Typography>
+        <Box className="lv-page">
+            <Box className="lv-header">
+                <Box>
+                    <Typography variant="h4" className="lv-header__title" sx={{ color: textColor }}>
+                        Diagnostics Console
+                    </Typography>
+                    <Typography className="lv-header__subtitle" sx={{ color: textColor }}>
+                        Search by IP and run live diagnostics, connectivity checks, and risk triage.
+                    </Typography>
+                </Box>
+            </Box>
 
-            {/* SEARCH BOX */}
-            <Paper sx={{ width: "100%", maxWidth: 500, padding: 4, background: bgCard, borderRadius: "18px" }}>
-                <TextField
-                    label="IP Address"
-                    value={ip}
-                    onChange={(e) => setIp(e.target.value)}
-                    fullWidth
-                    sx={{ mb: 3 }}
-                />
+            <Box
+                sx={{
+                    display: "grid",
+                    gridTemplateColumns: { xs: "1fr", lg: "1.05fr 1fr" },
+                    gap: 2,
+                }}
+            >
+                <Paper className="lv-panel">
+                    <Typography variant="h6" sx={{ color: textColor, mb: 2, fontWeight: 800 }}>
+                        Search & Filters
+                    </Typography>
 
-                <TextField
-                    label="Error Type"
-                    value={errorType}
-                    onChange={(e) => setErrorType(e.target.value)}
-                    select
-                    fullWidth
-                    sx={{ mb: 3 }}
-                >
-                    <MenuItem value="">All</MenuItem>
-                    <MenuItem value="Hardware">Hardware</MenuItem>
-                    <MenuItem value="Software">Software</MenuItem>
-                    <MenuItem value="Network">Network</MenuItem>
-                </TextField>
+                    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2 }}>
+                        <TextField
+                            label="IP Address"
+                            value={ip}
+                            onChange={(e) => setIp(e.target.value)}
+                            fullWidth
+                        />
 
-                <TextField
-                    label="Severity"
-                    value={severityFilter}
-                    onChange={(e) => setSeverityFilter(e.target.value)}
-                    select
-                    fullWidth
-                    sx={{ mb: 3 }}
-                >
-                    <MenuItem value="">All</MenuItem>
-                    <MenuItem value="Critical">Critical</MenuItem>
-                    <MenuItem value="Medium">Medium</MenuItem>
-                    <MenuItem value="Low">Low</MenuItem>
-                </TextField>
+                        <TextField
+                            label="Ports to check (TCP)"
+                            value={portsStr}
+                            onChange={(e) => setPortsStr(e.target.value)}
+                            fullWidth
+                            placeholder="80,443,22,8000"
+                        />
 
-                {/* NEW: Ports list for TCP port check (kept simple) */}
-                <TextField
-                    label="Ports to check (TCP)"
-                    value={portsStr}
-                    onChange={(e) => setPortsStr(e.target.value)}
-                    fullWidth
-                    sx={{ mb: 3 }}
-                    placeholder="80,443,22,8000"
-                />
+                        <TextField
+                            label="Error Type"
+                            value={errorType}
+                            onChange={(e) => setErrorType(e.target.value)}
+                            select
+                            fullWidth
+                        >
+                            <MenuItem value="">All</MenuItem>
+                            <MenuItem value="Hardware">Hardware</MenuItem>
+                            <MenuItem value="Software">Software</MenuItem>
+                            <MenuItem value="Network">Network</MenuItem>
+                        </TextField>
 
-                {/* DEMO ONLY TOGGLE (kept as comments) */}
-                {/* <Button ...> ... </Button> */}
+                        <TextField
+                            label="Severity"
+                            value={severityFilter}
+                            onChange={(e) => setSeverityFilter(e.target.value)}
+                            select
+                            fullWidth
+                        >
+                            <MenuItem value="">All</MenuItem>
+                            <MenuItem value="Critical">Critical</MenuItem>
+                            <MenuItem value="Medium">Medium</MenuItem>
+                            <MenuItem value="Low">Low</MenuItem>
+                        </TextField>
+                    </Box>
 
-                <Button
-                    variant="contained"
-                    onClick={() => setOpenAddLog(true)}
-                    sx={{
-                        width: "100%",
-                        maxWidth: 700,
-                        py: 1.6,
-                        mb: 2.5,
-                        fontWeight: 900,
-                        background: "linear-gradient(90deg, #7c3aed, #8b5cf6)",
-                    }}
-                >
-                    + Add New Log
-                </Button>
+                    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1.5, mt: 2 }}>
+                        <Button
+                            variant="contained"
+                            onClick={() => setOpenAddLog(true)}
+                            sx={{
+                                py: 1.2,
+                                fontWeight: 900,
+                                background: "linear-gradient(90deg, #7c3aed, #8b5cf6)",
+                            }}
+                        >
+                            + Add New Log
+                        </Button>
+                        <Button
+                            variant="contained"
+                            onClick={search}
+                            sx={{
+                                py: 1.2,
+                                background: "linear-gradient(90deg, #7c3aed, #8b5cf6)",
+                                fontWeight: "bold",
+                            }}
+                        >
+                            Run Search
+                        </Button>
+                        <Button
+                            variant="outlined"
+                            sx={{ py: 1.1, fontWeight: "bold", borderColor: "#7c3aed", color: "#7c3aed" }}
+                            onClick={reset}
+                        >
+                            Reset Console
+                        </Button>
+                    </Box>
+                </Paper>
 
-                <Button
-                    variant="contained"
-                    fullWidth
-                    onClick={search}
-                    sx={{
-                        py: 1.6,
-                        mb: 2.5,
-                        background: "linear-gradient(90deg, #7c3aed, #8b5cf6)",
-                        fontWeight: "bold",
-                    }}
-                >
-                    SEARCH
-                </Button>
-
-                <Button
-                    variant="outlined"
-                    fullWidth
-                    sx={{ py: 1.4, fontWeight: "bold", borderColor: "#7c3aed", color: "#7c3aed" }}
-                    onClick={reset}
-                >
-                    RESET
-                </Button>
-            </Paper>
-
-            {/* HARDWARE PANEL */}
-            {(deviceLoading || deviceInfo || deviceError || netLoading || netInfo || netError || httpLoading || httpProbe || httpErr) && (
-                <Paper sx={{ width: "100%", maxWidth: 700, padding: 3, background: bgCard, borderRadius: "18px" }}>
+                {/* HARDWARE PANEL */}
+                {(deviceLoading || deviceInfo || deviceError || netLoading || netInfo || netError || httpLoading || httpProbe || httpErr) && (
+                    <Paper className="lv-panel">
                     <Box display="flex" justifyContent="space-between" alignItems="center" gap={2} flexWrap="wrap">
                         <Typography sx={{ color: textColor, fontWeight: 900, fontSize: 18 }}>
                             Log Status
@@ -2748,33 +2744,31 @@ export default function SearchIP() {
                             )}
                         </>
                     )}
-                </Paper>
-            )}
+                    </Paper>
+                )}
+            </Box>
 
             {/* RESULTS TITLE */}
-            <Typography variant="h5" sx={{ color: textColor, mt: 2 }}>
-                Results
-            </Typography>
+            <Box sx={{ display: "grid", gap: 2 }}>
+                <Typography variant="h5" sx={{ color: textColor }}>
+                    Results
+                </Typography>
 
-            {/* RISK SUMMARY BAR */}
-            <Paper
-                sx={{
-                    width: "100%",
-                    maxWidth: 700,
-                    p: 2,
-                    background: bgCard,
-                    borderRadius: "18px",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    gap: 2,
-                    flexWrap: "wrap",
-                }}
-            >
-                <Box sx={{ display: "flex", gap: 1.2, flexWrap: "wrap", alignItems: "center" }}>
-                    <Typography sx={{ color: textColor, fontWeight: 900 }}>
-                        Risk Summary:
-                    </Typography>
+                {/* RISK SUMMARY BAR */}
+                <Paper
+                    className="lv-panel"
+                    sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: 2,
+                        flexWrap: "wrap",
+                    }}
+                >
+                    <Box sx={{ display: "flex", gap: 1.2, flexWrap: "wrap", alignItems: "center" }}>
+                        <Typography sx={{ color: textColor, fontWeight: 900 }}>
+                            Risk Summary:
+                        </Typography>
 
                     <Chip
                         label={`Critical: ${riskSummary.counts.Critical}`}
@@ -2817,10 +2811,10 @@ export default function SearchIP() {
                         <span style={{ fontSize: 12, fontWeight: 900, opacity: 0.8 }}> / 100</span>
                     </Typography>
                 </Box>
-            </Paper>
+                </Paper>
 
-            {/* RESULTS LIST — RISKS (No Demo) */}
-            <Paper sx={{ width: "100%", maxWidth: 700, padding: 3, background: bgCard, borderRadius: "18px" }}>
+                {/* RESULTS LIST — RISKS (No Demo) */}
+                <Paper className="lv-panel">
                 {risks.length === 0 ? (
                     <Typography sx={{ color: textColor }}>No risks detected for this IP.</Typography>
                 ) : (
@@ -2939,7 +2933,8 @@ export default function SearchIP() {
                         </Box>
                     ))
                 )}
-            </Paper>
+                </Paper>
+            </Box>
 
             {/* ---------------- Add Log Modal ---------------- */}
             <Modal open={openAddLog} onClose={() => setOpenAddLog(false)}>

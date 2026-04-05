@@ -131,27 +131,32 @@ export default function IssueDetails() {
     // MAIN VIEW
     // ============================================================
     return (
-        <Box sx={{ maxWidth: "900px", margin: "0 auto", padding: "20px" }}>
-            <Typography variant="h4" mb={3} fontWeight="bold" sx={{ color: textColor }}>
-                Issue Details
-            </Typography>
+        <Box className="lv-page" sx={{ maxWidth: "1000px", margin: "0 auto" }}>
+            <Box className="lv-header">
+                <Box>
+                    <Typography variant="h4" className="lv-header__title" sx={{ color: textColor }}>
+                        Issue Details
+                    </Typography>
+                    <Typography className="lv-header__subtitle" sx={{ color: textColor }}>
+                        Focused incident view, timeline, and resolution actions.
+                    </Typography>
+                </Box>
+                <Button variant="outlined" onClick={() => navigate("/logs")}>
+                    ← Back to Logs
+                </Button>
+            </Box>
 
-            <Button variant="outlined" sx={{ mb: 2 }} onClick={() => navigate("/logs")}>
-                ← Back to Logs
-            </Button>
-
-            {/* MAIN CARD */}
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-                <Paper
-                    sx={{
-                        padding: 4,
-                        borderRadius: "14px",
-                        background: cardBackground,
-                        border: subtleBorder,
-                        backdropFilter: "blur(10px)",
-                        mb: 4,
-                    }}
-                >
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "1.1fr 0.9fr" }, gap: 2 }}>
+                {/* MAIN CARD */}
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                    <Paper
+                        className="lv-panel"
+                        sx={{
+                            background: cardBackground,
+                            border: subtleBorder,
+                            backdropFilter: "blur(10px)",
+                        }}
+                    >
                     {/* JSON BADGE */}
                     {/* {issue.source === "json" && (
                         <Chip
@@ -206,7 +211,7 @@ export default function IssueDetails() {
 
                     {/* ACTION BUTTONS */}
                     {issue.source !== "json" && (
-                        <Box mt={4} display="flex" gap={2}>
+                        <Box mt={4} display="grid" gridTemplateColumns={{ xs: "1fr", sm: "1fr 1fr" }} gap={2}>
                             <Button variant="contained" color="success" fullWidth onClick={fixIssue}>
                                 Mark as Resolved
                             </Button>
@@ -217,23 +222,28 @@ export default function IssueDetails() {
                         </Box>
                     )}
                 </Paper>
-            </motion.div>
+                </motion.div>
 
-            {/* TIMELINE */}
-            <Typography variant="h6" sx={{ mb: 2, color: textColor }}>
-                Issue Timeline
-            </Typography>
+                {/* TIMELINE + PING */}
+                <Box sx={{ display: "grid", gap: 2 }}>
+                    <Paper className="lv-panel" sx={{ background: cardBackground, border: subtleBorder, position: "relative" }}>
+                        <Typography variant="h6" sx={{ mb: 2, color: textColor }}>
+                            Issue Timeline
+                        </Typography>
 
-            <Paper
-                sx={{
-                    padding: 3,
-                    borderRadius: 4,
-                    background: cardBackground,
-                    border: subtleBorder,
-                    mb: 4,
-                    position: "relative",
-                }}
-            >
+                        <Box
+                            sx={{
+                                position: "absolute",
+                                left: "18px",
+                                top: "56px",
+                                bottom: "20px",
+                                width: "3px",
+                                background:
+                                    mode === "dark"
+                                        ? "rgba(255,255,255,0.15)"
+                                        : "rgba(0,0,0,0.15)",
+                            }}
+                        />
                 <Box
                     sx={{
                         position: "absolute",
@@ -319,23 +329,14 @@ export default function IssueDetails() {
                         </Box>
                     )}
                 </Box>
-            </Paper>
+                    </Paper>
 
-            {/* PING HISTORY — REAL ONLY */}
-            {issue.source !== "json" && (
-                <>
-                    <Typography variant="h6" sx={{ mb: 2, color: textColor }}>
-                        Last 20 Ping Checks
-                    </Typography>
-
-                    <Paper
-                        sx={{
-                            padding: 3,
-                            borderRadius: 4,
-                            background: cardBackground,
-                            border: subtleBorder,
-                        }}
-                    >
+                    {/* PING HISTORY — REAL ONLY */}
+                    {issue.source !== "json" && (
+                        <Paper className="lv-panel" sx={{ background: cardBackground, border: subtleBorder }}>
+                        <Typography variant="h6" sx={{ mb: 2, color: textColor }}>
+                            Last 20 Ping Checks
+                        </Typography>
                         {pingHistory.length === 0 ? (
                             <Typography sx={{ opacity: 0.7, color: textColor }}>
                                 No ping data available.
@@ -364,9 +365,10 @@ export default function IssueDetails() {
                                 </Box>
                             ))
                         )}
-                    </Paper>
-                </>
-            )}
+                        </Paper>
+                    )}
+                </Box>
+            </Box>
         </Box>
     );
 }

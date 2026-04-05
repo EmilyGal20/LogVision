@@ -185,39 +185,18 @@ export default function Logs() {
     };
 
     return (
-        <Box>
-            <Box display="flex" justifyContent="space-between" mb={3}>
-                <Typography variant="h4" sx={{ color: textColor }}>
-                    Logs
-                </Typography>
+        <Box className="lv-page">
+            <Box className="lv-header">
+                <Box>
+                    <Typography variant="h4" className="lv-header__title" sx={{ color: textColor }}>
+                        Logs
+                    </Typography>
+                    <Typography className="lv-header__subtitle" sx={{ color: textColor }}>
+                        Live issue stream and manual log creation.
+                    </Typography>
+                </Box>
 
-                {/* <Button
-                    variant="contained"
-                    color="secondary"
-                    startIcon={<RefreshIcon />}
-                    onClick={loadLogs}
-                >
-                    Refresh Logs
-                </Button>
-                <Button
-                    variant="contained"
-                    color="primary"
-                    sx={{ mr: 1 }}
-                    onClick={() => {
-                        setAddForm({
-                            ip: "",
-                            computer_name: "",
-                            error_type: "Software",
-                            severity: "Medium",
-                            description: "",
-                            status: "open",
-                        });
-                        setAddOpen(true);
-                    }}
-                >
-                    + Add Log
-                </Button> */}
-                <Box display="flex" gap={1}>
+                <Box className="lv-toolbar">
                     <Button
                         variant="contained"
                         color="secondary"
@@ -235,78 +214,81 @@ export default function Logs() {
                         + Add Log
                     </Button>
                 </Box>
-
             </Box>
 
-            <Box sx={{ maxWidth: 900, margin: "0 auto" }}>
-                {logs.map((log, i) => {
-                    const statusKey = (log.status || "open").toLowerCase();
-                    const status = STATUS_MAP[statusKey] || STATUS_MAP.open;
+            <Paper className="lv-panel">
+                <Box sx={{ display: "grid", gap: 1.5 }}>
+                    {logs.map((log, i) => {
+                        const statusKey = (log.status || "open").toLowerCase();
+                        const status = STATUS_MAP[statusKey] || STATUS_MAP.open;
 
-                    return (
-                        <Paper
-                            key={`${log.source || "db"}-${String(log.id ?? `missing-${i}`)}-${log.ip || "noip"}`}
-                            sx={{
-                                p: 3,
-                                mb: 2,
-                                borderRadius: "14px",
-                                display: "flex",
-                                gap: 2,
-                                cursor: "pointer",
-                                background: bgCard,
-                                borderLeft: `8px solid ${severityColor[log.severity]}`,
-                            }}
-                            onClick={() => openIssue(log)}
-                        >
-                            <Box sx={{ pt: 1 }}>{iconForType(log.error_type)}</Box>
+                        return (
+                            <Paper
+                                key={`${log.source || "db"}-${String(log.id ?? `missing-${i}`)}-${log.ip || "noip"}`}
+                                sx={{
+                                    p: 2.5,
+                                    borderRadius: "14px",
+                                    display: "grid",
+                                    gridTemplateColumns: { xs: "1fr", md: "48px 1fr auto" },
+                                    alignItems: "center",
+                                    gap: 2,
+                                    cursor: "pointer",
+                                    background: bgCard,
+                                    borderLeft: `8px solid ${severityColor[log.severity]}`,
+                                    border: "1px solid rgba(201,165,95,0.16)",
+                                    transition: "transform .2s ease, box-shadow .2s ease, border-color .2s ease",
+                                    "&:hover": {
+                                        transform: "translateY(-2px)",
+                                        boxShadow: "0 16px 36px rgba(0,0,0,0.18)",
+                                        borderColor: "rgba(182,72,82,0.22)",
+                                    },
+                                }}
+                                onClick={() => openIssue(log)}
+                            >
+                                <Box sx={{ pt: { xs: 0, md: 0.5 } }}>{iconForType(log.error_type)}</Box>
 
-                            <Box sx={{ flexGrow: 1 }}>
-                                <Typography sx={{ fontWeight: "bold", color: textColor }}>
-                                    {log.error_type} — {log.computer_name}
-                                </Typography>
+                                <Box sx={{ flexGrow: 1 }}>
+                                    <Typography sx={{ fontWeight: 800, color: textColor }}>
+                                        {log.error_type} — {log.computer_name}
+                                    </Typography>
 
-                                <Typography sx={{ opacity: 0.8, color: textColor }}>
-                                    {log.description}
-                                </Typography>
+                                    <Typography sx={{ opacity: 0.82, color: textColor, mt: 0.5 }}>
+                                        {log.description}
+                                    </Typography>
 
-                                <Typography sx={{ mt: 1, color: textColor }}>
-                                    IP: <b>{log.ip}</b>
-                                </Typography>
+                                    <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mt: 1 }}>
+                                        <Typography sx={{ color: textColor }}>
+                                            IP: <b>{log.ip}</b>
+                                        </Typography>
+                                        <Typography
+                                            sx={{
+                                                fontSize: "0.75rem",
+                                                opacity: 0.6,
+                                                color: textColor,
+                                            }}
+                                        >
+                                            {new Date(log.created_at || Date.now()).toLocaleString()}
+                                        </Typography>
+                                    </Box>
+                                </Box>
 
-                                <Typography
-                                    sx={{
-                                        mt: 1,
-                                        fontSize: "0.75rem",
-                                        opacity: 0.6,
-                                        color: textColor,
-                                    }}
-                                >
-                                    {new Date(log.created_at || Date.now()).toLocaleString()}
-                                </Typography>
-                            </Box>
+                                <Chip
+                                    icon={status.icon}
+                                    label={status.label}
+                                    color={status.color}
+                                    size="small"
+                                />
+                            </Paper>
+                        );
+                    })}
 
-                            {/* <Chip
-                            label={log.source === "json" ? "JSON" : "REAL"}
-                            color={log.source === "json" ? "warning" : "info"}
-                            sx={{ fontWeight: "bold", height: "28px" }}
-                        /> */}
-                            <Chip
-                                icon={status.icon}
-                                label={status.label}
-                                color={status.color}
-                                size="small"
-                            />
-
-                        </Paper>
-                    );
-                })}
-
-                {logs.length === 0 && (
-                    <Typography sx={{ color: textColor, opacity: 0.6, mt: 5, textAlign: "center" }}>
-                        No logs available.
-                    </Typography>
-                )}
-            </Box>
+                    {logs.length === 0 && (
+                        <Typography sx={{ color: textColor, opacity: 0.6, mt: 3, textAlign: "center" }}>
+                            No logs available.
+                        </Typography>
+                    )}
+                </Box>
+            </Paper>
             <Dialog open={addOpen} onClose={() => setAddOpen(false)} maxWidth="sm" fullWidth>
                 <DialogTitle>Add Log</DialogTitle>
 

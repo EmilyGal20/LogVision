@@ -861,178 +861,187 @@ export default function RealtimeIP() {
        UI
     ——————————————————————————— */
     return (
-        <Box>
-            <Typography
-                variant="h4"
-                sx={{ mb: 3, color: textColor, fontWeight: "bold", letterSpacing: "0.5px" }}
-            >
-                LogVision — Realtime IP Monitoring
-            </Typography>
-
-            <Paper sx={{ p: 3, mb: 3, background: CARD_BG, border: CARD_BORDER, backdropFilter: "blur(6px)" }}>
-                <Box display="flex" gap={2}>
-                    <TextField
-                        label="IP Address"
-                        value={ip}
-                        onChange={(e) => setIp(e.target.value)}
-                        sx={{
-                            width: 250,
-                            input: { color: textColor },
-                            label: { color: isDark ? "#9ca3af" : "#374151" },
-                        }}
-                    />
-
-                    <Button variant="contained" onClick={startMonitoring}>
-                        Start
-                    </Button>
-
-                    <Button
-                        variant={speedEnabled ? "contained" : "outlined"}
-                        onClick={() => setSpeedEnabled((v) => !v)}
-                        sx={{ ml: "auto" }}
+        <Box className="lv-page">
+            <Box className="lv-header">
+                <Box>
+                    <Typography
+                        variant="h4"
+                        className="lv-header__title"
+                        sx={{ color: textColor, fontWeight: "bold", letterSpacing: "0.5px" }}
                     >
-                        {speedEnabled ? "Speedtest: ON" : "Speedtest: OFF"}
-                    </Button>
-                </Box>
-
-                {/* Ping + Icons (Speedtest vibe) */}
-                <Box sx={{ mt: 2, display: "flex", gap: 2, alignItems: "center", flexWrap: "wrap" }}>
-                    <Typography sx={{ color: mutedText }}>
-                        Ping: <b style={{ color: textColor }}>{pingMs ?? "—"}</b> ms
+                        Realtime IP Monitoring
                     </Typography>
-
-                    {/* <Box sx={{ display: "flex", gap: 1.2, opacity: 0.9 }}>
-                        <span title="Streaming">📺</span>
-                        <span title="Gaming">🎮</span>
-                        <span title="Video Call">📹</span>
-                        <span title="Browsing">🌐</span>
-                    </Box>
-
-                    <Typography sx={{ color: mutedText, marginLeft: "auto" }}>
-                        Range: <b style={{ color: textColor }}>0–{Math.round(dlRange.max)}</b> Mbps
-                    </Typography> */}
+                    <Typography className="lv-header__subtitle" sx={{ color: textColor }}>
+                        Live connectivity, availability score, and speed telemetry.
+                    </Typography>
                 </Box>
-            </Paper>
+            </Box>
 
-            <Tabs />
+            <Box
+                sx={{
+                    display: "grid",
+                    gridTemplateColumns: { xs: "1fr", lg: "0.9fr 1.4fr" },
+                    gap: 2,
+                }}
+            >
+                <Paper className="lv-panel" sx={{ background: CARD_BG, border: CARD_BORDER }}>
+                    <Typography variant="h6" sx={{ color: TITLE_COLOR, mb: 2, fontWeight: 800 }}>
+                        Control Deck
+                    </Typography>
+                    <Box display="flex" gap={2} flexWrap="wrap">
+                        <TextField
+                            label="IP Address"
+                            value={ip}
+                            onChange={(e) => setIp(e.target.value)}
+                            sx={{
+                                width: { xs: "100%", sm: 240 },
+                                input: { color: textColor },
+                                label: { color: isDark ? "#9ca3af" : "#374151" },
+                            }}
+                        />
 
-            {activeIP && (
-                <>
-                    {/* SCORE */}
-                    <Paper sx={{ p: 2, height: 250, mb: 3, background: CARD_BG, border: CARD_BORDER, borderRadius: "12px" }}>
-                        <Typography sx={{ color: TITLE_COLOR, mb: 1, fontWeight: 600 }}>
-                            Availability Score
-                        </Typography>
-                        <Line data={buildChart(SCORE_COLOR, scoreHistory)} options={tmOptions} />
-                    </Paper>
+                        <Button variant="contained" onClick={startMonitoring}>
+                            Start
+                        </Button>
 
-                    {/* ✅ SPEEDTEST GAUGES (Download + Upload) */}
-                    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2, mb: 3 }}>
-                        {/* Download Gauge */}
-                        <Paper sx={{ p: 2, background: CARD_BG, border: CARD_BORDER, borderRadius: "12px", minHeight: 320 }}>
-                            <Typography sx={{ color: DL_COLOR, fontWeight: 900, mb: 1, letterSpacing: "0.3px" }}>
-                                ⬇ DOWNLOAD Mbps
-                            </Typography>
-
-                            <Box sx={{ height: 220, position: "relative" }}>
-                                <Doughnut
-                                    data={makeGaugeData(dlSmooth, dlRange.min, dlRange.max)}
-                                    options={{
-                                        ...gaugeOptions,
-                                        plugins: {
-                                            ...gaugeOptions.plugins,
-                                            needle: {
-                                                value: dlSmooth,
-                                                min: dlRange.min,
-                                                max: dlRange.max,
-                                                needleColor: isDark ? "rgba(255,255,255,0.85)" : "rgba(17,24,39,0.75)",
-                                            },
-                                            gaugeTicks: {
-                                                min: dlRange.min,
-                                                max: dlRange.max,
-                                                ticks: [200, 800, 1500, 3000],
-                                                isDark,
-                                            },
-                                        },
-                                    }}
-                                    plugins={[needlePlugin, gaugeTicksPlugin]}
-                                />
-
-                                {/* Number overlay באמצע כמו Speedtest */}
-                                <Box sx={centerOverlaySx}>
-                                    <Typography sx={{ color: DL_COLOR, fontSize: 46, fontWeight: 900, lineHeight: 1 }}>
-                                        {Math.round(dlSmooth)}
-                                    </Typography>
-                                    <Typography sx={{ color: mutedText, fontSize: 12, letterSpacing: "0.5px" }}>
-                                        Mbps
-                                    </Typography>
-                                </Box>
-                            </Box>
-
-                            <Typography sx={{ color: mutedText, fontSize: 13, mt: 1 }}>
-                                Avg: <b style={{ color: textColor }}>{dlStats.avg}</b> • Peak:{" "}
-                                <b style={{ color: textColor }}>{dlStats.peak}</b>
-                            </Typography>
-                        </Paper>
-
-                        {/* Upload Gauge */}
-                        <Paper sx={{ p: 2, background: CARD_BG, border: CARD_BORDER, borderRadius: "12px", minHeight: 320 }}>
-                            <Typography sx={{ color: UL_COLOR, fontWeight: 900, mb: 1, letterSpacing: "0.3px" }}>
-                                ⬆ UPLOAD Mbps
-                            </Typography>
-
-                            <Box sx={{ height: 220, position: "relative" }}>
-                                <Doughnut
-                                    data={makeGaugeData(ulSmooth, ulRange.min, ulRange.max)}
-                                    options={{
-                                        ...gaugeOptions,
-                                        plugins: {
-                                            ...gaugeOptions.plugins,
-                                            needle: {
-                                                value: ulSmooth,
-                                                min: ulRange.min,
-                                                max: ulRange.max,
-                                                needleColor: isDark ? "rgba(255,255,255,0.85)" : "rgba(17,24,39,0.75)",
-                                            },
-                                            gaugeTicks: {
-                                                min: ulRange.min,
-                                                max: ulRange.max,
-                                                ticks: [200, 800, 1500, 3000],
-                                                isDark,
-                                            },
-                                        },
-                                    }}
-                                    plugins={[needlePlugin, gaugeTicksPlugin]}
-                                />
-
-                                {/* Number overlay באמצע כמו Speedtest */}
-                                <Box sx={centerOverlaySx}>
-                                    <Typography sx={{ color: UL_COLOR, fontSize: 46, fontWeight: 900, lineHeight: 1 }}>
-                                        {Math.round(ulSmooth)}
-                                    </Typography>
-                                    <Typography sx={{ color: mutedText, fontSize: 12, letterSpacing: "0.5px" }}>
-                                        Mbps
-                                    </Typography>
-                                </Box>
-                            </Box>
-
-                            <Typography sx={{ color: mutedText, fontSize: 13, mt: 1 }}>
-                                Avg: <b style={{ color: textColor }}>{ulStats.avg}</b> • Peak:{" "}
-                                <b style={{ color: textColor }}>{ulStats.peak}</b>
-                            </Typography>
-                        </Paper>
+                        <Button
+                            variant={speedEnabled ? "contained" : "outlined"}
+                            onClick={() => setSpeedEnabled((v) => !v)}
+                        >
+                            {speedEnabled ? "Speedtest: ON" : "Speedtest: OFF"}
+                        </Button>
                     </Box>
 
-
-                    {/* JITTER */}
-                    <Paper sx={{ p: 2, height: 250, mb: 3, background: CARD_BG, border: CARD_BORDER, borderRadius: "12px" }}>
-                        <Typography sx={{ color: TITLE_COLOR, mb: 1, fontWeight: 600 }}>
-                            Jitter
+                    <Box sx={{ mt: 2, display: "flex", gap: 2, alignItems: "center", flexWrap: "wrap" }}>
+                        <Typography sx={{ color: mutedText }}>
+                            Ping: <b style={{ color: textColor }}>{pingMs ?? "—"}</b> ms
                         </Typography>
-                        <Line data={buildChart(JITTER_COLOR, jitterHistory)} options={tmOptions} />
-                    </Paper>
-                </>
-            )}
+                    </Box>
+
+                    <Box sx={{ mt: 2 }}>
+                        <Tabs />
+                    </Box>
+                </Paper>
+
+                {activeIP && (
+                    <Box sx={{ display: "grid", gap: 2 }}>
+                        {/* SCORE */}
+                        <Paper className="lv-panel" sx={{ background: CARD_BG, border: CARD_BORDER }}>
+                            <Typography sx={{ color: TITLE_COLOR, mb: 1, fontWeight: 600 }}>
+                                Availability Score
+                            </Typography>
+                            <Box sx={{ height: 220 }}>
+                                <Line data={buildChart(SCORE_COLOR, scoreHistory)} options={tmOptions} />
+                            </Box>
+                        </Paper>
+
+                        {/* ✅ SPEEDTEST GAUGES (Download + Upload) */}
+                        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2 }}>
+                            {/* Download Gauge */}
+                            <Paper className="lv-panel" sx={{ background: CARD_BG, border: CARD_BORDER, minHeight: 320 }}>
+                                <Typography sx={{ color: DL_COLOR, fontWeight: 900, mb: 1, letterSpacing: "0.3px" }}>
+                                    ⬇ DOWNLOAD Mbps
+                                </Typography>
+
+                                <Box sx={{ height: 220, position: "relative" }}>
+                                    <Doughnut
+                                        data={makeGaugeData(dlSmooth, dlRange.min, dlRange.max)}
+                                        options={{
+                                            ...gaugeOptions,
+                                            plugins: {
+                                                ...gaugeOptions.plugins,
+                                                needle: {
+                                                    value: dlSmooth,
+                                                    min: dlRange.min,
+                                                    max: dlRange.max,
+                                                    needleColor: isDark ? "rgba(255,255,255,0.85)" : "rgba(17,24,39,0.75)",
+                                                },
+                                                gaugeTicks: {
+                                                    min: dlRange.min,
+                                                    max: dlRange.max,
+                                                    ticks: [200, 800, 1500, 3000],
+                                                    isDark,
+                                                },
+                                            },
+                                        }}
+                                        plugins={[needlePlugin, gaugeTicksPlugin]}
+                                    />
+
+                                    <Box sx={centerOverlaySx}>
+                                        <Typography sx={{ color: DL_COLOR, fontSize: 46, fontWeight: 900, lineHeight: 1 }}>
+                                            {Math.round(dlSmooth)}
+                                        </Typography>
+                                        <Typography sx={{ color: mutedText, fontSize: 12, letterSpacing: "0.5px" }}>
+                                            Mbps
+                                        </Typography>
+                                    </Box>
+                                </Box>
+
+                                <Typography sx={{ color: mutedText, fontSize: 13, mt: 1 }}>
+                                    Avg: <b style={{ color: textColor }}>{dlStats.avg}</b> • Peak:{" "}
+                                    <b style={{ color: textColor }}>{dlStats.peak}</b>
+                                </Typography>
+                            </Paper>
+
+                            {/* Upload Gauge */}
+                            <Paper className="lv-panel" sx={{ background: CARD_BG, border: CARD_BORDER, minHeight: 320 }}>
+                                <Typography sx={{ color: UL_COLOR, fontWeight: 900, mb: 1, letterSpacing: "0.3px" }}>
+                                    ⬆ UPLOAD Mbps
+                                </Typography>
+
+                                <Box sx={{ height: 220, position: "relative" }}>
+                                    <Doughnut
+                                        data={makeGaugeData(ulSmooth, ulRange.min, ulRange.max)}
+                                        options={{
+                                            ...gaugeOptions,
+                                            plugins: {
+                                                ...gaugeOptions.plugins,
+                                                needle: {
+                                                    value: ulSmooth,
+                                                    min: ulRange.min,
+                                                    max: ulRange.max,
+                                                    needleColor: isDark ? "rgba(255,255,255,0.85)" : "rgba(17,24,39,0.75)",
+                                                },
+                                                gaugeTicks: {
+                                                    min: ulRange.min,
+                                                    max: ulRange.max,
+                                                    ticks: [200, 800, 1500, 3000],
+                                                    isDark,
+                                                },
+                                            },
+                                        }}
+                                        plugins={[needlePlugin, gaugeTicksPlugin]}
+                                    />
+
+                                    <Box sx={centerOverlaySx}>
+                                        <Typography sx={{ color: UL_COLOR, fontSize: 46, fontWeight: 900, lineHeight: 1 }}>
+                                            {Math.round(ulSmooth)}
+                                        </Typography>
+                                        <Typography sx={{ color: mutedText, fontSize: 12, letterSpacing: "0.5px" }}>
+                                            Mbps
+                                        </Typography>
+                                    </Box>
+                                </Box>
+
+                                <Typography sx={{ color: mutedText, fontSize: 13, mt: 1 }}>
+                                    Avg: <b style={{ color: textColor }}>{ulStats.avg}</b> • Peak:{" "}
+                                    <b style={{ color: textColor }}>{ulStats.peak}</b>
+                                </Typography>
+                            </Paper>
+                        </Box>
+
+                        {/* JITTER */}
+                        <Paper className="lv-panel" sx={{ background: CARD_BG, border: CARD_BORDER }}>
+                            <Typography sx={{ color: TITLE_COLOR, mb: 1, fontWeight: 600 }}>
+                                Jitter
+                            </Typography>
+                            <Box sx={{ height: 220 }}>
+                                <Line data={buildChart(JITTER_COLOR, jitterHistory)} options={tmOptions} />
+                            </Box>
+                        </Paper>
+                    </Box>
+                )}
+            </Box>
 
             <Snackbar open={showAlert} autoHideDuration={3000} onClose={() => setShowAlert(false)}>
                 <Alert severity="info">{alertMessage}</Alert>

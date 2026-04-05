@@ -305,175 +305,171 @@ export default function Dashboard() {
     // RENDER
     // ====================================================================
     return (
-        <Box>
-            <Typography variant="h4" mb={3} fontWeight="bold" sx={{ color: textPrimary }}>
-                Dashboard
-            </Typography>
+        <Box className="lv-page">
+            <Box className="lv-header">
+                <Box>
+                    <Typography variant="h4" className="lv-header__title" sx={{ color: textPrimary }}>
+                        Command Center
+                    </Typography>
+                    <Typography className="lv-header__subtitle" sx={{ color: textPrimary }}>
+                        Live overview of incidents, severity, and category health.
+                    </Typography>
+                </Box>
 
-            {/* SEARCH BAR */}
-            <Box display="flex" gap={2} mb={4}>
-                <TextField
-                    label="Filter by IP"
-                    value={ip}
-                    onChange={(e) => setIp(e.target.value)}
-                    sx={{ width: 250 }}
-                />
-                <Button variant="contained" onClick={loadByIP}>SEARCH</Button>
-                <Button variant="outlined" onClick={resetFilter}>RESET</Button>
+                <Box className="lv-toolbar">
+                    <TextField
+                        label="Filter by IP"
+                        value={ip}
+                        onChange={(e) => setIp(e.target.value)}
+                        sx={{ width: { xs: "100%", sm: 220 } }}
+                    />
+                    <Button variant="contained" onClick={loadByIP}>Search</Button>
+                    <Button variant="outlined" onClick={resetFilter}>Reset</Button>
+                </Box>
             </Box>
 
-            {/* TOP CARDS */}
             <Box
-                display="grid"
-                gridTemplateColumns={{
-                    xs: "1fr",          // 📱 מובייל — כרטיס אחד בשורה
-                    sm: "repeat(2, 1fr)", // 📱 טאבלט — 2 כרטיסים
-                    md: "repeat(3, 1fr)", // 💻 דסקטופ — 3 כרטיסים
+                sx={{
+                    display: "grid",
+                    gridTemplateColumns: { xs: "1fr", lg: "1.6fr 1fr" },
+                    gap: 2,
                 }}
-                gap={{ xs: 3, md: 5 }}
-                mb={6}
             >
-                <StatCard title="Total Errors" value={logs.length} color="#ef4444" onClick={() => navigate("/logs?filter=all")} />
-                <StatCard title="Unique IPs" value={uniqueIPs} color="#3b82f6" onClick={() => navigate("/logs")} />
-                <Paper
-                    sx={{
-                        p: 3,
-                        borderRadius: 4,
-                        background: bgCard,
-                        cursor: "pointer",
-                        // maxWidth: 250,
-                        // maxHeight: 300,
-                        minHeight: 260,
-                        width: "100%",
-                        overflow: "hidden",
-                    }}
-                    onClick={() => navigate("/logs")}
-                >
-                    <Typography mb={1} sx={{ color: textPrimary }}>
-                        Severity Breakdown
-                    </Typography>
-
+                <Box sx={{ display: "grid", gap: 2 }}>
                     <Box
                         sx={{
-                            position: "relative",
-                            width: "100%",
-                            height: { xs: 220, sm: 200 }, // 👈 במובייל גבוה יותר
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
+                            display: "grid",
+                            gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", xl: "repeat(3, 1fr)" },
+                            gap: 2,
                         }}
                     >
-                        <Doughnut
-                            data={severityData}
-                            options={{
-                                responsive: true,
-                                maintainAspectRatio: false, // 👈 חובה עם height
-                                plugins: {
-                                    legend: {
-                                        position: "bottom",     // 👈 הרבה יותר טוב במובייל
-                                        labels: {
-                                            boxWidth: 12,
-                                            padding: 10,
-                                        },
-                                    },
-                                },
-                                layout: { padding: 6 },
+                        <StatCard title="Total Errors" value={logs.length} color="#ef4444" onClick={() => navigate("/logs?filter=all")} />
+                        <StatCard title="Unique IPs" value={uniqueIPs} color="#3b82f6" onClick={() => navigate("/logs")} />
+                        <Paper
+                            sx={{
+                                p: 3,
+                                borderRadius: 4,
+                                background: bgCard,
+                                cursor: "pointer",
+                                minHeight: 220,
+                                width: "100%",
+                                overflow: "hidden",
+                                border: "1px solid rgba(201,165,95,0.18)",
                             }}
+                            onClick={() => navigate("/logs")}
+                        >
+                            <Typography mb={1} sx={{ color: textPrimary }}>
+                                Severity Breakdown
+                            </Typography>
+
+                            <Box
+                                sx={{
+                                    position: "relative",
+                                    width: "100%",
+                                    height: { xs: 200, sm: 180 },
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                }}
+                            >
+                                <Doughnut
+                                    data={severityData}
+                                    options={{
+                                        responsive: true,
+                                        maintainAspectRatio: false,
+                                        plugins: {
+                                            legend: {
+                                                position: "bottom",
+                                                labels: { boxWidth: 12, padding: 10 },
+                                            },
+                                        },
+                                        layout: { padding: 6 },
+                                    }}
+                                />
+                            </Box>
+                        </Paper>
+                    </Box>
+
+                    <Paper className="lv-panel">
+                        <Typography mb={2} sx={{ color: textPrimary }}>Errors by Category</Typography>
+                        <Bar
+                            data={categoryData}
+                            options={{
+                                onClick: (_, elements) => {
+                                    if (elements.length > 0) {
+                                        const index = elements[0].index;
+                                        const category = categories[index];
+                                        navigate(`/logs?category=${category}`);
+                                    }
+                                },
+                            }}
+                        />
+                    </Paper>
+                </Box>
+
+                <Paper className="lv-panel">
+                    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2, mb: 2, flexWrap: "wrap" }}>
+                        <Typography variant="h5" sx={{ color: textPrimary }}>
+                            Issue Timeline
+                        </Typography>
+                        <TextField
+                            size="small"
+                            placeholder="Search IP / type / message…"
+                            value={timelineQuery}
+                            onChange={(e) => {
+                                setTimelineQuery(e.target.value);
+                                setTimelinePage(1);
+                            }}
+                            sx={{ width: { xs: "100%", sm: 260 } }}
+                        />
+                    </Box>
+
+                    {pagedTimeline.map((log, index) => (
+                        <motion.div
+                            key={`${log.id}-${index}`}
+                            initial={{ opacity: 0, x: -15 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.2 }}
+                            onClick={() => navigate(`/issue/${log.id}`)}
+                            style={{
+                                padding: "12px",
+                                marginBottom: "10px",
+                                borderRadius: "10px",
+                                background: mode === "dark" ? "#1f2937" : "#efe9e2",
+                                color: mode === "dark" ? "#fff" : "#111",
+                                cursor: "pointer",
+                                borderLeft: `6px solid ${log.severity === "Critical"
+                                        ? "#ef4444"
+                                        : log.severity === "Medium"
+                                            ? "#facc15"
+                                            : "#4ade80"
+                                    }`,
+                            }}
+                        >
+                            <strong>{log.error_type}</strong> — {log.description}
+                            <br />
+                            <span style={{ opacity: 0.7 }}>{log.ip}</span>
+                        </motion.div>
+                    ))}
+
+                    {pagedTimeline.length === 0 && (
+                        <Typography sx={{ opacity: 0.7, color: textPrimary, py: 2 }}>
+                            No timeline items found.
+                        </Typography>
+                    )}
+
+                    <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
+                        <Pagination
+                            count={timelinePageCount}
+                            page={timelinePage}
+                            onChange={(_, page) => setTimelinePage(page)}
+                            color="primary"
+                            shape="rounded"
+                            size="small"
                         />
                     </Box>
                 </Paper>
-
             </Box>
-
-            {/* CATEGORY BAR CHART */}
-            <Paper sx={{ padding: 3, borderRadius: 4, background: bgCard, maxWidth: 600 }}>
-                <Typography mb={2} sx={{ color: textPrimary }}>Errors by Category</Typography>
-                <Bar data={categoryData} options={{
-                    onClick: (_, elements) => {
-                        if (elements.length > 0) {
-                            const index = elements[0].index;
-                            const category = categories[index];
-                            navigate(`/logs?category=${category}`);
-                        }
-                    }
-                }} />
-            </Paper>
-
-            {/* ISSUE TIMELINE */}
-            {/* ISSUE TIMELINE */}
-            <Box
-                sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 2,
-                    mt: 4,
-                    mb: 2,
-                    width: "80%",
-                }}
-            >
-                <Typography variant="h5" sx={{ color: textPrimary }}>
-                    Issue Timeline
-                </Typography>
-
-                <TextField
-                    size="small"
-                    placeholder="Search IP / type / message…"
-                    value={timelineQuery}
-                    onChange={(e) => {
-                        setTimelineQuery(e.target.value);
-                        setTimelinePage(1);
-                    }}
-                    sx={{ width: 280 }}
-                />
-            </Box>
-
-            <Paper sx={{ p: 2, borderRadius: 3, background: bgCard, width: "80%" }}>
-                {pagedTimeline.map((log, index) => (
-                    <motion.div
-                        key={`${log.id}-${index}`}
-                        initial={{ opacity: 0, x: -15 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.2 }}
-                        onClick={() => navigate(`/issue/${log.id}`)}
-                        style={{
-                            padding: "12px",
-                            marginBottom: "10px",
-                            borderRadius: "8px",
-                            background: mode === "dark" ? "#1f2937" : "#e5e7eb",
-                            color: mode === "dark" ? "#fff" : "#111",
-                            cursor: "pointer",
-                            borderLeft: `6px solid ${log.severity === "Critical"
-                                    ? "#ef4444"
-                                    : log.severity === "Medium"
-                                        ? "#facc15"
-                                        : "#4ade80"
-                                }`,
-                        }}
-                    >
-                        <strong>{log.error_type}</strong> — {log.description}
-                        <br />
-                        <span style={{ opacity: 0.7 }}>{log.ip}</span>
-                    </motion.div>
-                ))}
-
-                {pagedTimeline.length === 0 && (
-                    <Typography sx={{ opacity: 0.7, color: textPrimary, py: 2 }}>
-                        No timeline items found.
-                    </Typography>
-                )}
-
-                <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
-                    <Pagination
-                        count={timelinePageCount}
-                        page={timelinePage}
-                        onChange={(_, page) => setTimelinePage(page)}
-                        color="primary"
-                        shape="rounded"
-                        size="small"
-                    />
-                </Box>
-            </Paper>
 
 
             {/* LIVE ALERT SNACKBAR */}

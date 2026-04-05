@@ -151,6 +151,75 @@ body.dark .MuiPaper-root:hover {
     0 18px 44px rgba(0, 0, 0, 0.78) !important;
 }
 
+/* Global section rhythm */
+.lv-section {
+  margin-top: 18px;
+}
+
+.lv-section-title {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.lv-muted {
+  opacity: 0.75;
+}
+
+/* =========================================================
+   NEW PREMIUM SHELL HELPERS
+========================================================= */
+.lv-page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.lv-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(201, 165, 95, 0.18);
+  backdrop-filter: blur(12px);
+}
+
+.lv-header__title {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.lv-header__subtitle {
+  opacity: 0.7;
+}
+
+.lv-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(201, 165, 95, 0.16);
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(10px);
+}
+
+.lv-panel {
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(201, 165, 95, 0.16);
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(10px);
+}
+
+.lv-grid {
+  display: grid;
+  gap: 16px;
+}
+
 ody.dark .MuiPaper-root::before {
   content: "";
   position: absolute;

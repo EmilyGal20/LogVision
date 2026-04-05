@@ -151,7 +151,14 @@ export default function Layout() {
 
 
     return (
-        <Box sx={{ display: "flex", background: pageBg, height: "100vh", overflow: "hidden", }}>
+        <Box
+            sx={{
+                display: "flex",
+                background: pageBg,
+                height: "100vh",
+                overflow: "hidden",
+            }}
+        >
             {/* ===== SIDEBAR ===== */}
             {/* Desktop */}
             {!isMobile && (
@@ -211,20 +218,28 @@ export default function Layout() {
 
             {/* ===== CONTENT AREA (TOPBAR + MAIN) ===== */}
 
-            <Box className="app-scroll"
-                sx={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "auto", }}>
+            <Box
+                className="app-scroll"
+                sx={{
+                    flexGrow: 1,
+                    minWidth: 0,
+                    display: "flex",
+                    flexDirection: "column",
+                    overflow: "auto",
+                }}
+            >
                 {/* TOPBAR */}
                 <Paper
                     elevation={0}
                     sx={{
                         mx: { xs: 1, md: 2 },
                         mt: { xs: 1, md: 2 },
-                        mb: { xs: 1, md: 2 },
-                        px: { xs: 1.25, md: 2 },
-                        py: { xs: 1, md: 1.2 },
-                        borderRadius: { xs: 4, md: 3 },
+                        mb: { xs: 1, md: 1.5 },
+                        px: { xs: 1.5, md: 2 },
+                        py: { xs: 1, md: 1.3 },
+                        borderRadius: { xs: 4, md: 4 },
                         background: topbarBg,
-                        backdropFilter: "blur(14px)",
+                        backdropFilter: "blur(16px)",
                         border:
                             mode === "dark"
                                 ? "1px solid rgba(139,92,246,0.18)"
@@ -235,7 +250,9 @@ export default function Layout() {
                         flexWrap: "wrap",
                         flexDirection: { xs: "column", sm: "row" },
                         justifyContent: { xs: "flex-start", sm: "space-between" },
-
+                        position: "sticky",
+                        top: 10,
+                        zIndex: 20,
                     }}
                 >
 
@@ -289,7 +306,7 @@ export default function Layout() {
                                 px: { xs: 1.4, sm: 2 },
                                 py: { xs: 0.7, sm: 0.8 },
                                 borderRadius: 999,
-                                background: mode === "dark" ? "rgba(0,0,0,0.28)" : "rgba(255,255,255,0.65)",
+                                background: mode === "dark" ? "rgba(0,0,0,0.30)" : "rgba(255,255,255,0.8)",
                                 border:
                                     mode === "dark"
                                         ? "1px solid rgba(139,92,246,0.22)"
@@ -319,8 +336,6 @@ export default function Layout() {
                     </Box>
 
                 </Paper>
-                <LiveHardwarePanel />
-
                 {/* MAIN */}
                 <Box
                     component="main"
@@ -330,12 +345,13 @@ export default function Layout() {
                         overflow: "visible",
                         px: { xs: 1.25, md: 2 },
                         pb: { xs: 2.5, md: 3 },
-                        background: "transparent", // או "var(--bg-main)"
-
-
+                        background: "transparent",
                     }}
                 >
-                    <Outlet />
+                    <Box sx={{ maxWidth: 1240, mx: "auto", width: "100%", display: "flex", flexDirection: "column", gap: 2 }}>
+                        <LiveHardwarePanel />
+                        <Outlet />
+                    </Box>
                 </Box>
             </Box>
         </Box>
