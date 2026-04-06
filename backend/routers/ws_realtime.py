@@ -45,7 +45,7 @@ async def websocket_monitor(ws: WebSocket, ip: str):
 #  (Used for live issue popups + dashboard alerts)
 # ============================================================
 
-error_clients = set()
+error_clients = {}
 current_alerts = []
 
 
@@ -53,26 +53,41 @@ async def broadcast_error(alert: dict):
     """Send an alert to all connected WS clients."""
     dead = []
 
-    for client in error_clients:
+    alert_org = alert.get("org_id")
+    for client, org_id in error_clients.items():
         try:
-            await client.send_json({
-                "type": "alert",
-                "payload": alert
-            })
+            if alert_org is None or org_id == alert_org:
+                await client.send_json({
+                    "type": "alert",
+                    "payload": alert
+                })
         except:
             dead.append(client)
 
     # Cleanup disconnected clients
     for d in dead:
-        error_clients.discard(d)
+        error_clients.pop(d, None)
 
 
 @router.websocket("/errors")
 async def websocket_errors(ws: WebSocket):
+    token = ws.query_params.get("token")
+    if not token:
+        await ws.close(code=1008)
+        return
+
+    from security import verify_token
+    payload = verify_token(token)
+    if not payload or payload.get("_error"):
+        await ws.close(code=1008)
+        return
+
+    org_id = payload.get("org_id")
+
     await ws.accept()
     print("[WS] Errors connection established")
 
-    error_clients.add(ws)
+    error_clients[ws] = org_id
 
     # Send existing alerts on connect
     if current_alerts:
@@ -104,7 +119,7 @@ async def websocket_errors(ws: WebSocket):
 
     finally:
         # Clean removal
-        error_clients.discard(ws)
+        error_clients.pop(ws, None)
 
         try:
             await ws.close()

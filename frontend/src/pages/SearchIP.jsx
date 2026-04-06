@@ -1383,7 +1383,7 @@ export default function SearchIP() {
     const [createHostname, setCreateHostname] = useState("");
     const [creatingDevice, setCreatingDevice] = useState(false);
     const auth = JSON.parse(localStorage.getItem("auth") || "null");
-    const isAdmin = auth?.user?.role === "admin";
+    const isAdmin = ["admin", "org_admin", "super_admin"].includes(auth?.user?.role);
 
     // device hardware status
     const [deviceInfo, setDeviceInfo] = useState(null);

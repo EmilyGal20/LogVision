@@ -20,11 +20,16 @@ router = APIRouter(prefix="/logs", tags=["Logs"])
 HW_FILE = Path("hardware_errors.json")
 
 
-def load_hw_logs():
+def load_hw_logs(default_org_id=1):
     if HW_FILE.exists():
         try:
             with open(HW_FILE, "r", encoding="utf8") as f:
-                return json.load(f)
+                data = json.load(f)
+                # backfill org_id for legacy entries
+                for item in data:
+                    if "org_id" not in item:
+                        item["org_id"] = default_org_id
+                return data
         except:
             return []
     return []
@@ -46,13 +51,24 @@ def get_db():
 # STOP TERMINAL SPAM — SUPPORT /logs **AND** /logs/
 # =====================================================================
 @router.get("")   # /logs   ← this removes the redirect spam
+@router.get("")   # /logs   ← this removes the redirect spam
 @router.get("/")  # /logs/  ← original
-def get_logs(db: Session = Depends(get_db)) -> List[LogOut]:
+def get_logs(
+    org_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+    user=Depends(require_user),
+) -> List[LogOut]:
 
-    db_logs = db.query(Log).order_by(Log.created_at.desc()).all()
+    target_org = user.org_id if user.role != "super_admin" else org_id
+
+    query = db.query(Log)
+    if target_org:
+        query = query.filter(Log.org_id == target_org)
+
+    db_logs = query.order_by(Log.created_at.desc()).all()
 
     # JSON logs (no validation errors!)
-    hw_logs = load_hw_logs()
+    hw_logs = load_hw_logs(target_org or user.org_id)
     json_logs = []
 
     for item in hw_logs:
@@ -60,7 +76,8 @@ def get_logs(db: Session = Depends(get_db)) -> List[LogOut]:
         new_item["id"] = f"json-{item['id']}"          # string ID
         new_item["source"] = "json"
         new_item["status"] = new_item.get("status", "open")
-        json_logs.append(new_item)
+        if not target_org or new_item.get("org_id") == target_org:
+            json_logs.append(new_item)
 
     # Return BOTH — BUT without breaking Pydantic
     return db_logs + json_logs
@@ -70,8 +87,8 @@ def get_logs(db: Session = Depends(get_db)) -> List[LogOut]:
 # CREATE NEW LOG
 # =====================================================================
 @router.post("/", response_model=LogRead, dependencies=[Depends(require_user)])
-def create_log(log: LogCreate, db: Session = Depends(get_db)):
-    db_log = Log(**log.dict())
+def create_log(log: LogCreate, db: Session = Depends(get_db), user=Depends(require_user)):
+    db_log = Log(**log.dict(), created_by=user.id, org_id=user.org_id)
     db.add(db_log)
     db.commit()
     db.refresh(db_log)
@@ -104,10 +121,15 @@ def create_log(log: LogCreate, db: Session = Depends(get_db)):
 def search_logs(
     ip: Optional[str] = None,
     error_type: Optional[str] = None,
-    db: Session = Depends(get_db)
+    org_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+    user=Depends(require_user),
 ):
     # ---------- DB ----------
+    target_org = user.org_id if user.role != "super_admin" else org_id
     query = db.query(Log)
+    if target_org:
+        query = query.filter(Log.org_id == target_org)
 
     if ip:
         query = query.filter(Log.ip.ilike(f"%{ip.strip()}%"))
@@ -118,7 +140,7 @@ def search_logs(
     db_logs = query.order_by(Log.created_at.desc()).all()
 
     # ---------- JSON ----------
-    hw_logs = load_hw_logs()
+    hw_logs = load_hw_logs(target_org or user.org_id)
     json_logs = []
 
     if ip:
@@ -138,7 +160,8 @@ def search_logs(
             new_item["id"] = f"json-{item.get('id')}"
             new_item["source"] = "json"
             new_item["status"] = new_item.get("status", "open")
-            json_logs.append(new_item)
+            if not target_org or new_item.get("org_id") == target_org:
+                json_logs.append(new_item)
 
     # ---------- return combined ----------
     return db_logs + json_logs
@@ -153,9 +176,14 @@ def get_hardware_logs(
     ip: Optional[str] = None,
     computer: Optional[str] = None,
     status: Optional[str] = None,
-    db: Session = Depends(get_db)
+    org_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+    user=Depends(require_user),
 ):
+    target_org = user.org_id if user.role != "super_admin" else org_id
     query = db.query(Log).filter(Log.error_type.ilike("Hardware"))
+    if target_org:
+        query = query.filter(Log.org_id == target_org)
 
     if ip:
         query = query.filter(Log.ip == ip)
@@ -173,8 +201,8 @@ def get_hardware_logs(
 # RESOLVE LOG
 # =====================================================================
 @router.put("/resolve/{log_id}", response_model=LogRead, dependencies=[Depends(require_user)])
-def resolve_log(log_id: int, db: Session = Depends(get_db)):
-    log = db.query(Log).filter(Log.id == log_id).first()
+def resolve_log(log_id: int, db: Session = Depends(get_db), user=Depends(require_user)):
+    log = db.query(Log).filter(Log.id == log_id, Log.org_id == user.org_id).first()
 
     if not log:
         raise HTTPException(404, "Log not found")
@@ -189,16 +217,16 @@ def resolve_log(log_id: int, db: Session = Depends(get_db)):
 # GET SINGLE LOG
 # =====================================================================
 @router.get("/{log_id}", response_model=LogRead | dict)
-def get_log(log_id: str, db: Session = Depends(get_db)):
+def get_log(log_id: str, db: Session = Depends(get_db), user=Depends(require_user)):
 
     # If numeric → DB log
     if log_id.isdigit():
-        db_log = db.query(Log).filter(Log.id == int(log_id)).first()
+        db_log = db.query(Log).filter(Log.id == int(log_id), Log.org_id == user.org_id).first()
         if db_log:
             return db_log
 
     # JSON fallback
-    hw_logs = load_hw_logs()
+    hw_logs = load_hw_logs(user.org_id)
     true_id = log_id.replace("json-", "")
 
     for item in hw_logs:
@@ -206,7 +234,8 @@ def get_log(log_id: str, db: Session = Depends(get_db)):
             new_item = item.copy()
             new_item["id"] = f"json-{item['id']}"
             new_item["source"] = "json"
-            return new_item
+            if new_item.get("org_id") == user.org_id:
+                return new_item
 
     raise HTTPException(404, "Log not found")
 
@@ -215,9 +244,12 @@ def get_log(log_id: str, db: Session = Depends(get_db)):
 # DELETE LOG
 # =====================================================================
 @router.delete("/{log_id}", dependencies=[Depends(require_admin)])
-def delete_log(log_id: int, db: Session = Depends(get_db)):
+def delete_log(log_id: int, db: Session = Depends(get_db), user=Depends(require_admin)):
 
-    log = db.query(Log).filter(Log.id == log_id).first()
+    query = db.query(Log).filter(Log.id == log_id)
+    if user.role != "super_admin":
+        query = query.filter(Log.org_id == user.org_id)
+    log = query.first()
 
     if not log:
         raise HTTPException(404, "Log not found")

@@ -8,6 +8,19 @@ from datetime import datetime
 
 
 # ============================================================
+# ORGANIZATIONS TABLE
+# ============================================================
+class Organization(Base):
+    __tablename__ = "organizations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    users = relationship("User", back_populates="organization", lazy="selectin")
+
+
+# ============================================================
 # USERS TABLE
 # ============================================================
 class User(Base):
@@ -18,10 +31,12 @@ class User(Base):
     password = Column(String)
     full_name = Column(String)
     email = Column(String, unique=True)
-    role = Column(String, default="user")  # user / admin
+    role = Column(String, default="user")  # viewer / operator / org_admin / admin / super_admin
+    org_id = Column(Integer, ForeignKey("organizations.id"), default=1)
 
     # Relationship: logs created by user
     logs = relationship("Log", back_populates="creator", lazy="selectin")
+    organization = relationship("Organization", back_populates="users")
 
 
 # ============================================================
@@ -37,6 +52,7 @@ class Log(Base):
     description = Column(Text)
     severity = Column(String, default="Low")   # Low / Medium / Critical
     status = Column(String, default="open")     # open / resolved / ignored
+    org_id = Column(Integer, ForeignKey("organizations.id"), default=1)
 
     created_at = Column(
         DateTime(timezone=True),
@@ -57,6 +73,7 @@ class Device(Base):
     id = Column(Integer, primary_key=True, index=True)
     ip = Column(String, unique=True, index=True)
     hostname = Column(String, nullable=True)
+    org_id = Column(Integer, ForeignKey("organizations.id"), default=1)
 
     # System Health
     online = Column(Boolean, default=False)
@@ -85,10 +102,26 @@ class Alert(Base):
     severity = Column(String, default="info")   # info / warning / critical
 
     device_ip = Column(String, nullable=True)
+    org_id = Column(Integer, ForeignKey("organizations.id"), default=1)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     acknowledged = Column(Boolean, default=False)  # Admin marked as seen
     acknowledged_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+
+
+# ============================================================
+# NOTIFICATIONS TABLE
+# ============================================================
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    org_id = Column(Integer, ForeignKey("organizations.id"), default=1)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    type = Column(String, default="info")
+    message = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    read = Column(Boolean, default=False)
 
 
 # ============================================================
@@ -113,6 +146,7 @@ class MonitorHistory(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     ip = Column(String, index=True)
+    org_id = Column(Integer, ForeignKey("organizations.id"), default=1)
     online = Column(Boolean)
     latency = Column(Float, default=0)
     packet_loss = Column(Float, default=0)
@@ -129,6 +163,7 @@ class UptimeHistory(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     ip = Column(String, index=True)
+    org_id = Column(Integer, ForeignKey("organizations.id"), default=1)
     uptime_percent = Column(Float, default=0)
 
     timestamp = Column(DateTime, default=datetime.utcnow)

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from database import SessionLocal
 from models import User
 from schemas import UserCreate, UserUpdate
-from auth_dependencies import require_admin
+from auth_dependencies import require_admin, require_super_admin
 import bcrypt
 
 router = APIRouter(prefix="/users", tags=["Users"])
@@ -25,8 +25,13 @@ def get_db():
 #   GET ALL USERS  (admin only)
 # ============================================================
 @router.get("/", dependencies=[Depends(require_admin)])   # ←← HERE (no /)
-def get_users(search: str = None, db: Session = Depends(get_db)):
+def get_users(search: str = None, org_id: int = None, db: Session = Depends(get_db), user=Depends(require_admin)):
     query = db.query(User)
+
+    if user.role != "super_admin":
+        query = query.filter(User.org_id == user.org_id)
+    elif org_id:
+        query = query.filter(User.org_id == org_id)
 
     if search:
         query = query.filter(
@@ -41,19 +46,24 @@ def get_users(search: str = None, db: Session = Depends(get_db)):
 #   CREATE USER (admin only)
 # ============================================================
 @router.post("/", dependencies=[Depends(require_admin)])   # ← no /
-def create_user(user: UserCreate, db: Session = Depends(get_db)):
+def create_user(user: UserCreate, db: Session = Depends(get_db), current=Depends(require_admin)):
     exists = db.query(User).filter(User.username == user.username).first()
     if exists:
         raise HTTPException(400, "Username already taken")
 
     hashed = bcrypt.hashpw(user.password.encode(), bcrypt.gensalt()).decode()
 
+    org_id = current.org_id
+    if current.role == "super_admin" and user.org_id:
+        org_id = user.org_id
+
     new_user = User(
         username=user.username,
         password=hashed,
         full_name=user.full_name,
         email=user.email,
-        role=user.role if user.role else "user"
+        role=user.role if user.role else "user",
+        org_id=org_id
     )
 
     db.add(new_user)
@@ -67,7 +77,7 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
 #   UPDATE USER
 # ============================================================
 @router.put("/{user_id}", dependencies=[Depends(require_admin)])
-def update_user(user_id: int, data: UserUpdate, db: Session = Depends(get_db)):
+def update_user(user_id: int, data: UserUpdate, db: Session = Depends(get_db), current=Depends(require_admin)):
     user = db.query(User).filter(User.id == user_id).first()
 
     if not user:
@@ -93,7 +103,7 @@ def update_user(user_id: int, data: UserUpdate, db: Session = Depends(get_db)):
 #   DELETE USER
 # ============================================================
 @router.delete("/{user_id}", dependencies=[Depends(require_admin)])
-def delete_user(user_id: int, db: Session = Depends(get_db)):
+def delete_user(user_id: int, db: Session = Depends(get_db), current=Depends(require_admin)):
     user = db.query(User).filter(User.id == user_id).first()
 
     if not user:
@@ -106,3 +116,7 @@ def delete_user(user_id: int, db: Session = Depends(get_db)):
     db.commit()
 
     return {"message": "User deleted successfully"}
+    if current.role != "super_admin" and user.org_id != current.org_id:
+        raise HTTPException(403, "Cross-org update forbidden")
+    if current.role != "super_admin" and user.org_id != current.org_id:
+        raise HTTPException(403, "Cross-org delete forbidden")

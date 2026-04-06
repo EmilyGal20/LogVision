@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import SessionLocal
-from models import User
+from models import User, Organization
 from schemas import UserCreate, LoginSchema, UserOut
 import bcrypt
 from passlib.context import CryptContext
@@ -23,18 +23,26 @@ def hash_password(password: str):
 def ensure_admin_exists():
     db = SessionLocal()
 
-    admin = db.query(User).filter(User.role == "admin").first()
+    admin = db.query(User).filter(User.role.in_(["admin", "super_admin"])).first()
     if admin:
         print("Admin already exists")
         db.close()
         return
+
+    org = db.query(Organization).filter(Organization.id == 1).first()
+    if not org:
+        org = Organization(id=1, name="Default Org")
+        db.add(org)
+        db.commit()
+        db.refresh(org)
 
     admin_user = User(
         username="Admin",
         password=hash_password("admin123"),
         email="admin@example.com",
         full_name="System Admin",
-        role="admin"
+        role="super_admin",
+        org_id=org.id
     )
 
     db.add(admin_user)
@@ -84,12 +92,31 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
 
     hashed = bcrypt.hashpw(user.password.encode(), bcrypt.gensalt()).decode()
 
+    org_id = None
+    if user.org_id:
+        org_id = user.org_id
+    elif user.org_name:
+        existing = db.query(Organization).filter(Organization.name == user.org_name).first()
+        if not existing:
+            existing = Organization(name=user.org_name)
+            db.add(existing)
+            db.commit()
+            db.refresh(existing)
+        org_id = existing.id
+    else:
+        org_id = 1
+
+    role = user.role if user.role else "user"
+    if user.org_name:
+        role = "org_admin"
+
     new_user = User(
         username=user.username,
         password=hashed,
         full_name=user.full_name,
         email=user.email,
-        role="user"
+        role=role,
+        org_id=org_id
     )
 
     db.add(new_user)
@@ -129,7 +156,8 @@ def login(data: LoginSchema, db: Session = Depends(get_db)):
     token = create_token({
         "id": user.id,
         "username": user.username,
-        "role": user.role
+        "role": user.role,
+        "org_id": user.org_id,
     })
 
     return {
@@ -139,7 +167,8 @@ def login(data: LoginSchema, db: Session = Depends(get_db)):
             "username": user.username,
             "full_name": user.full_name,
             "email": user.email,
-            "role": user.role
+            "role": user.role,
+            "org_id": user.org_id,
         }
     }
 
@@ -182,7 +211,8 @@ def create_admin(db: Session = Depends(get_db)):
         password=hashed,
         full_name="System Admin",
         email="admin@example.com",
-        role="admin"
+        role="super_admin",
+        org_id=1
     )
 
     db.add(admin)

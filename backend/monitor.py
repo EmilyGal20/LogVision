@@ -26,13 +26,21 @@ monitoring_results = {}
 stop_flags = {}
 active_threads = {}
 active_uptime_threads = {}
+ip_org_map = {}
 
 db_queue = Queue(maxsize=5000)
 
 # ✅ per-ip throttling memory
-_last_db_write_at = {}       # ip -> datetime
-_last_latency_sample_at = {}  # ip -> datetime
-_last_status = {}            # ip -> bool
+_last_db_write_at = {}       # key -> datetime
+_last_latency_sample_at = {}  # key -> datetime
+_last_status = {}            # key -> bool
+
+# ============================================================
+#   KEY HELPERS
+# ============================================================
+
+def _key(ip: str, org_id: int) -> str:
+    return f"{org_id}:{ip}"
 
 
 # ============================================================
@@ -104,7 +112,7 @@ def ping_ip(ip):
 #   LATENCY + ONLINE
 # ============================================================
 
-def _should_write_to_db(ip: str, alive: bool, now: datetime) -> bool:
+def _should_write_to_db(key: str, alive: bool, now: datetime) -> bool:
     """
     Write to DB only if:
     1) status changed
@@ -113,15 +121,15 @@ def _should_write_to_db(ip: str, alive: bool, now: datetime) -> bool:
     OR
     3) latency sample interval passed (for graphs)
     """
-    prev_status = _last_status.get(ip)
+    prev_status = _last_status.get(key)
 
     status_changed = (prev_status is not None) and (prev_status != alive)
 
-    last_write = _last_db_write_at.get(ip)
+    last_write = _last_db_write_at.get(key)
     heartbeat_due = (last_write is None) or (
         (now - last_write) >= HEARTBEAT_WRITE_EVERY)
 
-    last_latency = _last_latency_sample_at.get(ip)
+    last_latency = _last_latency_sample_at.get(key)
     latency_due = (last_latency is None) or (
         (now - last_latency) >= LATENCY_SAMPLE_EVERY)
 
@@ -133,20 +141,22 @@ def _should_write_to_db(ip: str, alive: bool, now: datetime) -> bool:
     return heartbeat_due or latency_due
 
 
-def monitor_ip(ip):
-    print(f"[START] Monitoring thread launched for {ip}")
+def monitor_ip(ip, org_id):
+    key = _key(ip, org_id)
+    print(f"[START] Monitoring thread launched for {ip} (org {org_id})")
 
     while True:
-        if stop_flags.get(ip):
-            print(f"[STOP] Monitoring stopped for {ip}")
+        if stop_flags.get(key):
+            print(f"[STOP] Monitoring stopped for {ip} (org {org_id})")
             break
 
         latency = ping_ip(ip)
         alive = latency is not None
 
         # ✅ realtime in-memory update (fast, every 5s)
-        monitoring_results[ip] = {
+        monitoring_results[key] = {
             "ip": ip,
+            "org_id": org_id,
             "online": alive,
             "latency": latency,
             "timestamp": time.time()
@@ -156,10 +166,11 @@ def monitor_ip(ip):
 
         # ✅ throttled DB write
         try:
-            if _should_write_to_db(ip, alive, now):
+            if _should_write_to_db(key, alive, now):
                 db_queue.put_nowait(
                     MonitorHistory(
                         ip=ip,
+                        org_id=org_id,
                         online=alive,
                         latency=latency if latency is not None else 0,
                         packet_loss=0.0,
@@ -167,13 +178,13 @@ def monitor_ip(ip):
                         timestamp=now
                     )
                 )
-                _last_db_write_at[ip] = now
-                _last_latency_sample_at[ip] = now  # נחשב גם כ-sample
+                _last_db_write_at[key] = now
+                _last_latency_sample_at[key] = now  # נחשב גם כ-sample
         except:
             pass
 
         # ✅ update last seen status every loop
-        _last_status[ip] = alive
+        _last_status[key] = alive
 
         time.sleep(PING_INTERVAL_SECONDS)
 
@@ -182,21 +193,23 @@ def monitor_ip(ip):
 #   UPTIME every 5 min
 # ============================================================
 
-def calculate_daily_uptime(ip):
-    print(f"[UPTIME] Tracking started for {ip}")
+def calculate_daily_uptime(ip, org_id):
+    key = _key(ip, org_id)
+    print(f"[UPTIME] Tracking started for {ip} (org {org_id})")
 
     while True:
-        if stop_flags.get(ip):
-            print(f"[UPTIME STOP] Uptime stopped for {ip}")
+        if stop_flags.get(key):
+            print(f"[UPTIME STOP] Uptime stopped for {ip} (org {org_id})")
             break
 
-        logs = monitoring_results.get(ip, {"online": False})
+        logs = monitoring_results.get(key, {"online": False})
         uptime_percent = 100 if logs["online"] else 0
 
         try:
             db_queue.put_nowait(
                 UptimeHistory(
                     ip=ip,
+                    org_id=org_id,
                     uptime_percent=uptime_percent,
                     timestamp=datetime.utcnow()
                 )
@@ -211,50 +224,55 @@ def calculate_daily_uptime(ip):
 #   start monitoring
 # ============================================================
 
-def start_monitoring(ip):
-    stop_flags[ip] = False
+def start_monitoring(ip, org_id=1):
+    key = _key(ip, org_id)
+    ip_org_map[key] = org_id
+    stop_flags[key] = False
 
-    if ip in active_threads and not active_threads[ip].is_alive():
-        del active_threads[ip]
+    if key in active_threads and not active_threads[key].is_alive():
+        del active_threads[key]
 
-    if ip in active_uptime_threads and not active_uptime_threads[ip].is_alive():
-        del active_uptime_threads[ip]
+    if key in active_uptime_threads and not active_uptime_threads[key].is_alive():
+        del active_uptime_threads[key]
 
     # reset throttling markers for a clean start
-    _last_db_write_at.pop(ip, None)
-    _last_latency_sample_at.pop(ip, None)
-    _last_status.pop(ip, None)
+    _last_db_write_at.pop(key, None)
+    _last_latency_sample_at.pop(key, None)
+    _last_status.pop(key, None)
 
-    if ip not in active_threads:
-        t = threading.Thread(target=monitor_ip, args=(ip,), daemon=True)
+    if key not in active_threads:
+        t = threading.Thread(target=monitor_ip, args=(ip, org_id), daemon=True)
         t.start()
-        active_threads[ip] = t
+        active_threads[key] = t
 
-    if ip not in active_uptime_threads:
+    if key not in active_uptime_threads:
         t2 = threading.Thread(
-            target=calculate_daily_uptime, args=(ip,), daemon=True)
+            target=calculate_daily_uptime, args=(ip, org_id), daemon=True)
         t2.start()
-        active_uptime_threads[ip] = t2
+        active_uptime_threads[key] = t2
 
 
 # ============================================================
 #    stop monitoring
 # ============================================================
 
-def stop_monitoring(ip):
-    stop_flags[ip] = True
-    print(f"[STOP REQUEST] Flag set for {ip}")
+def stop_monitoring(ip, org_id=1):
+    key = _key(ip, org_id)
+    stop_flags[key] = True
+    print(f"[STOP REQUEST] Flag set for {ip} (org {org_id})")
 
 
 # ============================================================
 #   info for the app (WebSocket)
 # ============================================================
 
-def get_realtime_data(ip):
-    data = monitoring_results.get(ip)
+def get_realtime_data(ip, org_id=1):
+    key = _key(ip, org_id)
+    data = monitoring_results.get(key)
     if not data:
         return {
             "ip": ip,
+            "org_id": org_id,
             "online": False,
             "latency": None,
             "timestamp": time.time()

@@ -58,6 +58,9 @@ export default function Dashboard() {
     const [logs, setLogs] = usePersistentState("dash-logs", []);
     const [timeline, setTimeline] = usePersistentState("dash-timeline", []);
     const [alertRules, setAlertRules] = usePersistentState("alert-rules", defaultRules());
+    const [aiOrgSummary, setAiOrgSummary] = useState(null);
+    const [aiOrgLoading, setAiOrgLoading] = useState(false);
+    const [orgInfo, setOrgInfo] = useState(null);
 
     const [newIssue, setNewIssue] = useState(null);
     const [showNewAlert, setShowNewAlert] = useState(false);
@@ -169,9 +172,37 @@ export default function Dashboard() {
         loadData();
     };
 
+    const runAiOrgSummary = async () => {
+        setAiOrgLoading(true);
+        try {
+            const res = await api.post("/ai/summary/org");
+            setAiOrgSummary(res.data || null);
+        } catch {
+            setAiOrgSummary(null);
+        } finally {
+            setAiOrgLoading(false);
+        }
+    };
+
     useEffect(() => {
         loadData();
     }, [loadData]);
+
+    useEffect(() => {
+        let mounted = true;
+        const loadOrg = async () => {
+            try {
+                const res = await api.get("/orgs/me");
+                if (mounted) setOrgInfo(res.data || null);
+            } catch {
+                if (mounted) setOrgInfo(null);
+            }
+        };
+        loadOrg();
+        return () => {
+            mounted = false;
+        };
+    }, []);
 
     // ================================================================
     // LIVE WEBSOCKET ALERTS (NO SPAM + ignores ping)
@@ -182,12 +213,9 @@ export default function Dashboard() {
 
         const raw = localStorage.getItem("auth");
         const token = raw ? JSON.parse(raw)?.token : null;
+        if (!token) return;
 
-        // const wsUrl = token
-        //     ? `${wsBase}/ws/errors?token=${encodeURIComponent(token)}`
-        //     : `${wsBase}/ws/errors`;
-
-        const wsUrl = `${wsBase}/ws/errors`;
+        const wsUrl = `${wsBase}/ws/errors?token=${encodeURIComponent(token)}`;
 
 
         const ws = new WebSocket(wsUrl);
@@ -195,9 +223,6 @@ export default function Dashboard() {
 
         ws.onopen = () => {
             // console.log("WebSocket connected to /ws/errors");
-            if (token) {
-                ws.send(JSON.stringify({ type: "auth", token }));
-            }
         };
 
         ws.onmessage = (msg) => {
@@ -420,6 +445,9 @@ export default function Dashboard() {
                         onChange={(e) => setIp(e.target.value)}
                         sx={{ width: { xs: "100%", sm: 220 } }}
                     />
+                    {orgInfo && (
+                        <Chip label={`Org: ${orgInfo.name}`} sx={{ fontWeight: 800 }} />
+                    )}
                     <Button variant="contained" onClick={loadByIP}>Search</Button>
                     <Button variant="outlined" onClick={resetFilter}>Reset</Button>
                 </Box>
@@ -642,16 +670,33 @@ export default function Dashboard() {
                     <Typography variant="h6" sx={{ color: textPrimary, mb: 2 }}>
                         AI Ops Summary
                     </Typography>
-                    <Typography sx={{ fontWeight: 800, mb: 1 }}>
-                        {aiSummary.headline}
-                    </Typography>
-                    <Box sx={{ display: "grid", gap: 0.6 }}>
-                        {aiSummary.bullets.map((b, i) => (
-                            <Typography key={i} sx={{ opacity: 0.75 }}>
-                                {b}
+                    {aiOrgSummary ? (
+                        <>
+                            <Typography sx={{ fontWeight: 800, mb: 1 }}>
+                                {aiOrgSummary.summary}
                             </Typography>
-                        ))}
-                    </Box>
+                            <Box sx={{ display: "grid", gap: 0.6 }}>
+                                {(aiOrgSummary.risks || []).slice(0, 3).map((b, i) => (
+                                    <Typography key={i} sx={{ opacity: 0.75 }}>
+                                        • {b}
+                                    </Typography>
+                                ))}
+                            </Box>
+                        </>
+                    ) : (
+                        <>
+                            <Typography sx={{ fontWeight: 800, mb: 1 }}>
+                                {aiSummary.headline}
+                            </Typography>
+                            <Box sx={{ display: "grid", gap: 0.6 }}>
+                                {aiSummary.bullets.map((b, i) => (
+                                    <Typography key={i} sx={{ opacity: 0.75 }}>
+                                        {b}
+                                    </Typography>
+                                ))}
+                            </Box>
+                        </>
+                    )}
                     {aiStats.mostSevere && (
                         <Box sx={{ mt: 2 }}>
                             <Typography sx={{ fontWeight: 800 }}>Most severe now</Typography>
@@ -660,6 +705,15 @@ export default function Dashboard() {
                             </Typography>
                         </Box>
                     )}
+                    <Button
+                        variant="outlined"
+                        size="small"
+                        sx={{ mt: 2 }}
+                        onClick={runAiOrgSummary}
+                        disabled={aiOrgLoading}
+                    >
+                        {aiOrgLoading ? "Analyzing..." : "Generate AI Summary"}
+                    </Button>
                 </Paper>
 
                 <Paper className="lv-panel">
@@ -844,7 +898,7 @@ export default function Dashboard() {
                                     `Top IPs:`,
                                     ...reports.topIps.map(([ip, c]) => `${ip}: ${c}`),
                                 ];
-                                navigator.clipboard?.writeText?.(lines.join("\n"));
+                                navigator.clipboard?.writeText?.(lines.join(String.fromCharCode(10)));
                             }}
                         >
                             Copy Report

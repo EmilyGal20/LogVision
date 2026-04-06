@@ -215,7 +215,7 @@ def start(ip: str, user=Depends(require_user)):
     # פה אפשר לראות בוודאות מי המשתמש שעבר auth
     # print("START by user:", user)
 
-    start_monitoring(ip)
+    start_monitoring(ip, user.org_id)
     return {"message": f"Monitoring started for {ip}", "user": user}
 
 
@@ -224,24 +224,21 @@ def start(ip: str, user=Depends(require_user)):
 # ============================================================
 @router.get("/status/{ip}")
 def status(ip: str, user=Depends(require_user)):
-    return monitoring_results.get(ip, {
-        "ip": ip,
-        "online": False,
-        "latency": None,
-        "timestamp": time.time()
-    })
+    return get_realtime_data(ip, user.org_id)
 
 
 # ============================================================
 #   HISTORY — FULL HISTORY FOR GRAPHS
 # ============================================================
 @router.get("/history/{ip}")
-def history(ip: str, user=Depends(require_user)):
+def history(ip: str, org_id: int | None = None, user=Depends(require_user)):
+    target_org = user.org_id if user.role != "super_admin" else (org_id or user.org_id)
     db = SessionLocal()
     try:
         rows = (
             db.query(MonitorHistory)
             .filter(MonitorHistory.ip == ip)
+            .filter(MonitorHistory.org_id == target_org)
             .order_by(asc(MonitorHistory.timestamp))
             .all()
         )
@@ -254,12 +251,14 @@ def history(ip: str, user=Depends(require_user)):
 #   LAST 20 PING RESULTS
 # ============================================================
 @router.get("/ping-history/{ip}")
-def ping_history(ip: str, user=Depends(require_user)):
+def ping_history(ip: str, org_id: int | None = None, user=Depends(require_user)):
+    target_org = user.org_id if user.role != "super_admin" else (org_id or user.org_id)
     db = SessionLocal()
     try:
         rows = (
             db.query(MonitorHistory)
             .filter(MonitorHistory.ip == ip)
+            .filter(MonitorHistory.org_id == target_org)
             .order_by(desc(MonitorHistory.timestamp))
             .limit(20)
             .all()
@@ -274,10 +273,11 @@ def ping_history(ip: str, user=Depends(require_user)):
 # ============================================================
 @router.get("/stop/{ip}")
 def stop(ip: str, user=Depends(require_user)):
-    stop_monitoring(ip)
+    stop_monitoring(ip, user.org_id)
 
-    monitoring_results[ip] = {
+    monitoring_results[f"{user.org_id}:{ip}"] = {
         "ip": ip,
+        "org_id": user.org_id,
         "online": False,
         "latency": None,
         "timestamp": time.time()
@@ -313,7 +313,7 @@ async def ws_monitor(websocket: WebSocket, ip: str):
 
     try:
         while True:
-            data = get_realtime_data(ip)
+            data = get_realtime_data(ip, payload.get("org_id") or 1)
             await websocket.send_json(data)
             await asyncio.sleep(10)
     except Exception as e:

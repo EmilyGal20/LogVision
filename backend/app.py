@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # DB
 from database import Base, engine
+from utils.migrations import ensure_org_schema
 
 # Routers (NEW CLEAN STRUCTURE)
 from routers.auth import router as auth_router
@@ -17,6 +18,9 @@ from routers.hardware import router as hardware_router
 from routers.speedtest import router as speedtest_router
 from routers.agent import router as agent_router
 from routers.net import router as net_router
+from routers.orgs import router as orgs_router
+from routers.notifications import router as notifications_router
+from routers.ai import router as ai_router
 
 
 # Demo file loader helpers
@@ -50,8 +54,9 @@ def save_hw_errors(data):
 # =========================================================
 app = FastAPI(title="LogVision API", version="1.0.0")
 
-# CREATE TABLES
+# CREATE TABLES + MIGRATIONS
 Base.metadata.create_all(bind=engine)
+ensure_org_schema()
 
 # CORS
 app.add_middleware(
@@ -115,6 +120,9 @@ app.include_router(hardware_router)
 app.include_router(speedtest_router)
 app.include_router(agent_router)
 app.include_router(net_router)
+app.include_router(orgs_router)
+app.include_router(notifications_router)
+app.include_router(ai_router)
 
 
 # =========================================================

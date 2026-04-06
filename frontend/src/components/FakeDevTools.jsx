@@ -21,7 +21,13 @@ export default function FakeDevTools() {
     // WebSocket connection (REAL)
     // ===============================
     useEffect(() => {
-        const ws = new WebSocket("ws://localhost:8000/ws/errors");
+        const raw = localStorage.getItem("auth");
+        const token = raw ? JSON.parse(raw)?.token : null;
+        if (!token) return;
+
+        const ws = new WebSocket(
+            `ws://localhost:8000/ws/errors?token=${encodeURIComponent(token)}`
+        );
         wsRef.current = ws;
 
         ws.onopen = () => {

@@ -415,8 +415,17 @@ def get_db():
 # GET ALL DEVICES (Admin only)
 # ============================================================
 @router.get("/", response_model=list[DeviceOut], dependencies=[Depends(require_admin)])
-def get_devices(db: Session = Depends(get_db)):
-    return db.query(Device).all()
+def get_devices(
+    org_id: int | None = None,
+    db: Session = Depends(get_db),
+    user=Depends(require_admin),
+):
+    query = db.query(Device)
+    if user.role != "super_admin":
+        query = query.filter(Device.org_id == user.org_id)
+    elif org_id:
+        query = query.filter(Device.org_id == org_id)
+    return query.all()
 
 
 # ============================================================
@@ -447,10 +456,13 @@ def get_device(
             ram_used=0,
             last_ping=None,
             last_update=now,
+            org_id=user.org_id,
         )
         db.add(device)
         db.commit()
         db.refresh(device)
+    elif device.org_id != user.org_id and user.role != "super_admin":
+        raise HTTPException(404, "Device not found")
 
     return device
 
@@ -459,7 +471,7 @@ def get_device(
 # CREATE NEW DEVICE (Admin only)
 # ============================================================
 @router.post("/", response_model=DeviceOut, dependencies=[Depends(require_admin)])
-def create_device(data: DeviceCreate, db: Session = Depends(get_db)):
+def create_device(data: DeviceCreate, db: Session = Depends(get_db), user=Depends(require_admin)):
     exists = db.query(Device).filter(Device.ip == data.ip).first()
     if exists:
         raise HTTPException(400, "Device already exists")
@@ -475,6 +487,7 @@ def create_device(data: DeviceCreate, db: Session = Depends(get_db)):
         ram_used=0,
         last_ping=None,
         last_update=now,
+        org_id=user.org_id,
     )
 
     db.add(d)
@@ -487,8 +500,11 @@ def create_device(data: DeviceCreate, db: Session = Depends(get_db)):
 # UPDATE DEVICE (Admin only)
 # ============================================================
 @router.put("/{ip}", response_model=DeviceOut, dependencies=[Depends(require_admin)])
-def update_device(ip: str, data: DeviceUpdate, db: Session = Depends(get_db)):
-    device = db.query(Device).filter(Device.ip == ip).first()
+def update_device(ip: str, data: DeviceUpdate, db: Session = Depends(get_db), user=Depends(require_admin)):
+    query = db.query(Device).filter(Device.ip == ip)
+    if user.role != "super_admin":
+        query = query.filter(Device.org_id == user.org_id)
+    device = query.first()
     if not device:
         raise HTTPException(404, "Device not found")
 
@@ -508,8 +524,11 @@ def update_device(ip: str, data: DeviceUpdate, db: Session = Depends(get_db)):
 # Throttle last_ping updates
 # ============================================================
 @router.post("/{ip}/ping", dependencies=[Depends(require_admin)])
-def ping_device(ip: str, db: Session = Depends(get_db)):
-    device = db.query(Device).filter(Device.ip == ip).first()
+def ping_device(ip: str, db: Session = Depends(get_db), user=Depends(require_admin)):
+    query = db.query(Device).filter(Device.ip == ip)
+    if user.role != "super_admin":
+        query = query.filter(Device.org_id == user.org_id)
+    device = query.first()
     if not device:
         raise HTTPException(404, "Device not found")
 
@@ -538,8 +557,11 @@ def ping_device(ip: str, db: Session = Depends(get_db)):
 # RESTART DEVICE (Simulated) — Admin only
 # ============================================================
 @router.post("/{ip}/restart", dependencies=[Depends(require_admin)])
-def restart_device(ip: str, db: Session = Depends(get_db)):
-    device = db.query(Device).filter(Device.ip == ip).first()
+def restart_device(ip: str, db: Session = Depends(get_db), user=Depends(require_admin)):
+    query = db.query(Device).filter(Device.ip == ip)
+    if user.role != "super_admin":
+        query = query.filter(Device.org_id == user.org_id)
+    device = query.first()
     if not device:
         raise HTTPException(404, "Device not found")
 
@@ -555,8 +577,11 @@ def restart_device(ip: str, db: Session = Depends(get_db)):
 # DIAGNOSTICS — Admin only
 # ============================================================
 @router.post("/{ip}/diagnostics", dependencies=[Depends(require_admin)])
-def diagnostics(ip: str, db: Session = Depends(get_db)):
-    device = db.query(Device).filter(Device.ip == ip).first()
+def diagnostics(ip: str, db: Session = Depends(get_db), user=Depends(require_admin)):
+    query = db.query(Device).filter(Device.ip == ip)
+    if user.role != "super_admin":
+        query = query.filter(Device.org_id == user.org_id)
+    device = query.first()
     if not device:
         raise HTTPException(404, "Device not found")
 
@@ -598,10 +623,13 @@ def update_health(
             ram_used=0,
             last_ping=None,
             last_update=now,
+            org_id=user.org_id,
         )
         db.add(device)
         db.commit()
         db.refresh(device)
+    elif device.org_id != user.org_id and user.role != "super_admin":
+        raise HTTPException(404, "Device not found")
 
     now = datetime.utcnow()
     prev_online = bool(device.online)

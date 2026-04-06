@@ -720,6 +720,7 @@ export default function Profile() {
     // Register-only fields
     const [fullName, setFullName] = useState("");
     const [email, setEmail] = useState("");
+    const [orgName, setOrgName] = useState("");
 
     const [loading, setLoading] = useState(false);
     const [msg, setMsg] = useState({ type: "", text: "" });
@@ -729,6 +730,7 @@ export default function Profile() {
         setPassword("");
         setFullName("");
         setEmail("");
+        setOrgName("");
         setMsg({ type: "", text: "" });
     }, []);
 
@@ -817,6 +819,7 @@ export default function Profile() {
                 password,
                 ...(fullName.trim() ? { full_name: fullName.trim() } : {}),
                 ...(email.trim() ? { email: email.trim() } : {}),
+                ...(orgName.trim() ? { org_name: orgName.trim() } : {}),
             };
 
             await api.post("/auth/register", payload, {
@@ -847,6 +850,8 @@ export default function Profile() {
         setUser(null); // UI state
         navigate("/profile", { replace: true });
     };
+
+    const isAdmin = ["admin", "org_admin", "super_admin"].includes(user?.role);
 
     // ✅ Switch account: open clean modal
     const openAuthModal = () => {
@@ -882,7 +887,7 @@ export default function Profile() {
                     <Typography sx={{ opacity: 0.7, mb: 2 }}>
                         Login state and account role.
                     </Typography>
-                    {user?.role === "admin" && (
+                    {isAdmin && (
                         <Typography sx={{ color: "green", fontWeight: "bold", mb: 2 }}>
                             ✅ Admin is connected
                         </Typography>
@@ -908,6 +913,9 @@ export default function Profile() {
                         <p>
                             <b>Role:</b> {user.role}
                         </p>
+                        <p>
+                            <b>Organization:</b> {user.org_id || "-"}
+                        </p>
 
                         <Button
                             variant="outlined"
@@ -918,7 +926,7 @@ export default function Profile() {
                             Logout
                         </Button>
 
-                        {user.role === "admin" && (
+                        {isAdmin && (
                             <Box sx={{ mt: 3 }}>
                                 <Typography variant="h6" fontWeight="bold">
                                     Admin Tools
@@ -1014,6 +1022,13 @@ export default function Profile() {
                                 sx={{ mb: 2 }}
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
+                            />
+                            <TextField
+                                label="Organization name (optional)"
+                                fullWidth
+                                sx={{ mb: 2 }}
+                                value={orgName}
+                                onChange={(e) => setOrgName(e.target.value)}
                             />
                         </>
                     )}

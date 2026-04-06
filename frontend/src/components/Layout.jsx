@@ -14,6 +14,7 @@ import {
     InputBase,
     ListSubheader,
     Button,
+    Badge,
 } from "@mui/material";
 import ThemeToggle from "./ThemeToggle";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
@@ -40,6 +41,7 @@ import { useControlCenter } from "../context/ControlCenterContext";
 import { useState, useMemo, useEffect } from "react";
 import { useThemeMode } from "../context/ThemeContext";
 import { readAlerts } from "../utils/alertsEngine";
+import { api, getAuth } from "../api";
 
 export default function Layout() {
     const { mode } = useThemeMode();
@@ -51,6 +53,8 @@ export default function Layout() {
     const [paletteQuery, setPaletteQuery] = useState("");
     const [alertsOpen, setAlertsOpen] = useState(false);
     const [alerts, setAlerts] = useState([]);
+    const [notificationsOpen, setNotificationsOpen] = useState(false);
+    const [notifications, setNotifications] = useState([]);
 
     const isMobile = useMediaQuery("(max-width:900px)");
 
@@ -173,6 +177,26 @@ export default function Layout() {
         refresh();
         const id = setInterval(refresh, 4000);
         return () => clearInterval(id);
+    }, []);
+
+    useEffect(() => {
+        let mounted = true;
+        const loadNotifications = async () => {
+            const auth = getAuth();
+            if (!auth?.token) return;
+            try {
+                const res = await api.get("/notifications?unread_only=true&limit=20");
+                if (mounted) setNotifications(Array.isArray(res.data) ? res.data : []);
+            } catch {
+                if (mounted) setNotifications([]);
+            }
+        };
+        loadNotifications();
+        const id = setInterval(loadNotifications, 15000);
+        return () => {
+            mounted = false;
+            clearInterval(id);
+        };
     }, []);
 
     const DrawerContent = (
@@ -423,6 +447,24 @@ export default function Layout() {
                                 background: "rgba(182,72,82,0.18)",
                             }}
                         />
+                        <Chip
+                            label={
+                                <Badge
+                                    color="error"
+                                    badgeContent={notifications.length}
+                                    overlap="circular"
+                                >
+                                    Notifications
+                                </Badge>
+                            }
+                            onClick={() => setNotificationsOpen(true)}
+                            sx={{
+                                fontWeight: 800,
+                                cursor: "pointer",
+                                border: "1px solid rgba(201,165,95,0.35)",
+                                background: "rgba(201,165,95,0.12)",
+                            }}
+                        />
                         {!isMobile && <ThemeToggle />}
                     </Box>
                 </Paper>
@@ -539,6 +581,55 @@ export default function Layout() {
                             </ListItemButton>
                         ))}
                     </List>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog
+                open={notificationsOpen}
+                onClose={() => setNotificationsOpen(false)}
+                maxWidth="sm"
+                fullWidth
+            >
+                <DialogTitle sx={{ fontWeight: 900, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    Notifications
+                    <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={async () => {
+                            try {
+                                await api.put("/notifications/read-all");
+                                setNotifications([]);
+                            } catch {
+                                // ignore
+                            }
+                        }}
+                    >
+                        Mark all read
+                    </Button>
+                </DialogTitle>
+                <DialogContent sx={{ display: "grid", gap: 1.2, pb: 3 }}>
+                    {notifications.length === 0 && (
+                        <Typography sx={{ opacity: 0.7 }}>No unread notifications.</Typography>
+                    )}
+                    {notifications.map((n) => (
+                        <Paper
+                            key={n.id}
+                            sx={{
+                                p: 1.6,
+                                borderRadius: 3,
+                                border: "1px solid rgba(201,165,95,0.18)",
+                                background: "rgba(255,255,255,0.04)",
+                                display: "grid",
+                                gap: 0.4,
+                            }}
+                        >
+                            <Typography sx={{ fontWeight: 800 }}>{n.type?.toUpperCase() || "INFO"}</Typography>
+                            <Typography sx={{ opacity: 0.85 }}>{n.message}</Typography>
+                            <Typography sx={{ opacity: 0.6, fontSize: 12 }}>
+                                {n.created_at ? new Date(n.created_at).toLocaleString() : "Just now"}
+                            </Typography>
+                        </Paper>
+                    ))}
                 </DialogContent>
             </Dialog>
 

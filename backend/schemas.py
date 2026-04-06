@@ -12,6 +12,9 @@ class UserCreate(BaseModel):
     password: str
     full_name: Optional[str] = None
     email: Optional[str] = None
+    org_id: Optional[int] = None
+    org_name: Optional[str] = None
+    role: Optional[str] = None
 
 
 class UserUpdate(BaseModel):
@@ -26,6 +29,7 @@ class UserOut(BaseModel):
     full_name: Optional[str] = None
     email: Optional[str] = None
     role: str
+    org_id: Optional[int] = None
 
     # class Config:
     #     orm_mode = True
@@ -37,6 +41,7 @@ class UserBasic(BaseModel):
     id: int
     username: str
     role: str
+    org_id: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -68,6 +73,7 @@ class LogOut(BaseModel):
     severity: str
     status: str
     created_at: datetime
+    org_id: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -83,6 +89,7 @@ class LogRead(BaseModel):
     status: str
     created_at: datetime
     created_by: Optional[int] = None
+    org_id: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -118,6 +125,7 @@ class DeviceOut(BaseModel):
     disk_health: Optional[Dict]
     last_ping: Optional[datetime]
     last_update: Optional[datetime]
+    org_id: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -142,6 +150,7 @@ class AlertOut(BaseModel):
     device_ip: Optional[str] = None
     created_at: datetime
     acknowledged: bool
+    org_id: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -175,12 +184,57 @@ class MonitorEvent(BaseModel):
     jitter: float
     packet_loss: float
     timestamp: datetime
+    org_id: Optional[int] = None
 
 
 class UptimeOut(BaseModel):
     ip: str
     uptime_percent: float
     timestamp: datetime
+    org_id: Optional[int] = None
 
     class Config:
         from_attributes = True
+
+
+# ============================================================
+# ORGANIZATION SCHEMAS
+# ============================================================
+
+
+class OrganizationCreate(BaseModel):
+    name: str
+
+
+class OrganizationOut(BaseModel):
+    id: int
+    name: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ============================================================
+# NOTIFICATION SCHEMAS
+# ============================================================
+
+
+class NotificationOut(BaseModel):
+    id: int
+    org_id: int
+    user_id: Optional[int] = None
+    type: str
+    message: str
+    created_at: datetime
+    read: bool
+
+    class Config:
+        from_attributes = True
+
+
+class NotificationCreate(BaseModel):
+    type: str = "info"
+    message: str
+    user_id: Optional[int] = None
+    org_id: Optional[int] = None

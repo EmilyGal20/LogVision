@@ -104,6 +104,8 @@
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from security import verify_token
+from database import SessionLocal
+from models import User
 
 security = HTTPBearer()
 
@@ -128,11 +130,22 @@ def get_current_user(token: HTTPAuthorizationCredentials = Depends(security)):
     if payload.get("_error") == "invalid":
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    return payload
+    user_id = payload.get("id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.id == int(user_id)).first()
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+        return user
+    finally:
+        db.close()
 
 
 def require_admin(user=Depends(get_current_user)):
-    if user.get("role") != "admin":
+    if user.role not in ["admin", "org_admin", "super_admin"]:
         raise HTTPException(status_code=403, detail="Admins only")
     return user
 
@@ -140,4 +153,10 @@ def require_admin(user=Depends(get_current_user)):
 def require_user(user=Depends(get_current_user)):
     if not user:
         raise HTTPException(status_code=401, detail="Authentication required")
+    return user
+
+
+def require_super_admin(user=Depends(get_current_user)):
+    if user.role != "super_admin":
+        raise HTTPException(status_code=403, detail="Super admin only")
     return user

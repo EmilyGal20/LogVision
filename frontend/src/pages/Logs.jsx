@@ -138,9 +138,13 @@ export default function Logs() {
     // WEBSOCKET (ONLY ONCE)
     // ============================================================
     const initWebSocket = useCallback(() => {
+        const raw = localStorage.getItem("auth");
+        const token = raw ? JSON.parse(raw)?.token : null;
+        if (!token) return;
+
         const ws = new WebSocket(
             `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.hostname
-            }:8000/ws/errors`
+            }:8000/ws/errors?token=${encodeURIComponent(token)}`
         );
 
         wsRef.current = ws;
@@ -929,7 +933,7 @@ export default function Logs() {
                                     `Top IPs:`,
                                     ...reports.topIps.map(([ip, c]) => `${ip}: ${c}`),
                                 ];
-                                navigator.clipboard?.writeText?.(lines.join("\n"));
+                                navigator.clipboard?.writeText?.(lines.join(String.fromCharCode(10)));
                             }}
                         >
                             Copy Report
