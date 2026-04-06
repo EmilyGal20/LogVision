@@ -8,9 +8,15 @@ import {
     TextField,
     Divider,
     Chip,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    InputBase,
+    ListSubheader,
+    Button,
 } from "@mui/material";
 import ThemeToggle from "./ThemeToggle";
-import { Link, Outlet, useLocation } from "react-router-dom";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemIcon from "@mui/material/ListItemIcon";
@@ -31,14 +37,20 @@ import LiveHardwarePanel from "./LiveHardwarePanel";
 import { useMediaQuery } from "@mui/material";
 import { useControlCenter } from "../context/ControlCenterContext";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useThemeMode } from "../context/ThemeContext";
+import { readAlerts } from "../utils/alertsEngine";
 
 export default function Layout() {
     const { mode } = useThemeMode();
     const location = useLocation();
+    const navigate = useNavigate();
     const { setSelectedIP } = useControlCenter();
     const [searchIP, setSearchIP] = useState("");
+    const [paletteOpen, setPaletteOpen] = useState(false);
+    const [paletteQuery, setPaletteQuery] = useState("");
+    const [alertsOpen, setAlertsOpen] = useState(false);
+    const [alerts, setAlerts] = useState([]);
 
     const isMobile = useMediaQuery("(max-width:900px)");
 
@@ -72,6 +84,96 @@ export default function Layout() {
         ],
         []
     );
+
+    const paletteActions = useMemo(
+        () => [
+            {
+                id: "dashboard",
+                label: "Open Dashboard",
+                description: "Executive overview and KPIs",
+                icon: <DashboardIcon />,
+                run: () => navigate("/dashboard"),
+            },
+            {
+                id: "logs",
+                label: "Open Logs",
+                description: "Incident stream and log intelligence",
+                icon: <BugReportIcon />,
+                run: () => navigate("/logs"),
+            },
+            {
+                id: "search",
+                label: "Open Search",
+                description: "Diagnostics workstation",
+                icon: <SearchIcon />,
+                run: () => navigate("/search"),
+            },
+            {
+                id: "admin",
+                label: "Open Admin Panel",
+                description: "Users, devices, alerts, settings",
+                icon: <AdminPanelSettingsIcon />,
+                run: () => navigate("/admin"),
+            },
+            {
+                id: "realtime",
+                label: "Open Realtime Monitor",
+                description: "Live telemetry and availability",
+                icon: <WifiIcon />,
+                run: () => navigate("/realtime"),
+            },
+            {
+                id: "hardware",
+                label: "Open Hardware Errors",
+                description: "Hardware incidents and export",
+                icon: <MemoryIcon />,
+                run: () => navigate("/hardware"),
+            },
+            {
+                id: "profile",
+                label: "Open Profile",
+                description: "Account and access",
+                icon: <PersonIcon />,
+                run: () => navigate("/profile"),
+            },
+        ],
+        [navigate]
+    );
+
+    const ipLike = useMemo(() => {
+        const q = paletteQuery.trim();
+        if (!q) return null;
+        return /(\d{1,3}\.){2,3}\d{1,3}/.test(q) ? q : null;
+    }, [paletteQuery]);
+
+    const filteredActions = useMemo(() => {
+        const q = paletteQuery.trim().toLowerCase();
+        if (!q) return paletteActions;
+        return paletteActions.filter(
+            (a) =>
+                a.label.toLowerCase().includes(q) ||
+                a.description.toLowerCase().includes(q)
+        );
+    }, [paletteActions, paletteQuery]);
+
+    useEffect(() => {
+        const onKey = (e) => {
+            const key = e.key?.toLowerCase();
+            if ((e.ctrlKey || e.metaKey) && key === "k") {
+                e.preventDefault();
+                setPaletteOpen(true);
+            }
+        };
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, []);
+
+    useEffect(() => {
+        const refresh = () => setAlerts(readAlerts());
+        refresh();
+        const id = setInterval(refresh, 4000);
+        return () => clearInterval(id);
+    }, []);
 
     const DrawerContent = (
         <>
@@ -289,7 +391,7 @@ export default function Layout() {
                                         setSelectedIP(searchIP);
                                     }
                                 }}
-                                placeholder="Search IP / Computer / Error…"
+                                placeholder="Search IP / Computer / Error..."
                                 variant="standard"
                                 InputProps={{ disableUnderline: true }}
                                 sx={{ flex: 1, minWidth: 0 }}
@@ -301,6 +403,26 @@ export default function Layout() {
                                 sx={{ fontWeight: 800 }}
                             />
                         )}
+                        <Chip
+                            label="Command"
+                            onClick={() => setPaletteOpen(true)}
+                            sx={{
+                                fontWeight: 800,
+                                cursor: "pointer",
+                                border: "1px solid rgba(201,165,95,0.35)",
+                                background: "rgba(201,165,95,0.14)",
+                            }}
+                        />
+                        <Chip
+                            label={`Alerts ${alerts.length}`}
+                            onClick={() => setAlertsOpen(true)}
+                            sx={{
+                                fontWeight: 800,
+                                cursor: "pointer",
+                                border: "1px solid rgba(182,72,82,0.35)",
+                                background: "rgba(182,72,82,0.18)",
+                            }}
+                        />
                         {!isMobile && <ThemeToggle />}
                     </Box>
                 </Paper>
@@ -324,6 +446,138 @@ export default function Layout() {
                     </Box>
                 </Box>
             </Box>
+
+            <Dialog
+                open={paletteOpen}
+                onClose={() => setPaletteOpen(false)}
+                maxWidth="sm"
+                fullWidth
+            >
+                <DialogTitle sx={{ fontWeight: 900 }}>
+                    Command Center
+                </DialogTitle>
+                <DialogContent sx={{ display: "grid", gap: 2, pb: 3 }}>
+                    <Paper
+                        sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1,
+                            px: 2,
+                            py: 1,
+                            borderRadius: 3,
+                            border: "1px solid rgba(201,165,95,0.25)",
+                            background: "rgba(255,255,255,0.04)",
+                        }}
+                    >
+                        <SearchIcon sx={{ opacity: 0.7 }} />
+                        <InputBase
+                            autoFocus
+                            placeholder="Type a command or IP..."
+                            value={paletteQuery}
+                            onChange={(e) => setPaletteQuery(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter" && ipLike) {
+                                    localStorage.setItem(
+                                        "search-ip-value",
+                                        JSON.stringify(ipLike)
+                                    );
+                                    setSelectedIP(ipLike);
+                                    navigate("/search");
+                                    setPaletteOpen(false);
+                                }
+                            }}
+                            sx={{ flex: 1 }}
+                        />
+                        <Chip label="Ctrl+K" size="small" />
+                    </Paper>
+
+                    <List
+                        subheader={
+                            <ListSubheader component="div">
+                                Quick Actions
+                            </ListSubheader>
+                        }
+                        sx={{ borderRadius: 3, border: "1px solid rgba(201,165,95,0.12)" }}
+                    >
+                        {ipLike && (
+                            <ListItemButton
+                                onClick={() => {
+                                    localStorage.setItem(
+                                        "search-ip-value",
+                                        JSON.stringify(ipLike)
+                                    );
+                                    setSelectedIP(ipLike);
+                                    navigate("/search");
+                                    setPaletteOpen(false);
+                                }}
+                                sx={{ borderRadius: 2, mx: 1, my: 0.5 }}
+                            >
+                                <ListItemIcon>
+                                    <SearchIcon />
+                                </ListItemIcon>
+                                <ListItemText
+                                    primary={`Search IP ${ipLike}`}
+                                    secondary="Open diagnostics for this target"
+                                />
+                            </ListItemButton>
+                        )}
+
+                        {filteredActions.map((action) => (
+                            <ListItemButton
+                                key={action.id}
+                                onClick={() => {
+                                    action.run();
+                                    setPaletteOpen(false);
+                                }}
+                                sx={{ borderRadius: 2, mx: 1, my: 0.5 }}
+                            >
+                                <ListItemIcon>{action.icon}</ListItemIcon>
+                                <ListItemText
+                                    primary={action.label}
+                                    secondary={action.description}
+                                />
+                            </ListItemButton>
+                        ))}
+                    </List>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog
+                open={alertsOpen}
+                onClose={() => setAlertsOpen(false)}
+                maxWidth="sm"
+                fullWidth
+            >
+                <DialogTitle sx={{ fontWeight: 900 }}>
+                    Alerts
+                </DialogTitle>
+                <DialogContent sx={{ display: "grid", gap: 1.2, pb: 3 }}>
+                    {alerts.length === 0 && (
+                        <Typography sx={{ opacity: 0.7 }}>No active alerts.</Typography>
+                    )}
+                    {alerts.map((a) => (
+                        <Paper key={a.id} sx={{ p: 1.5, borderRadius: 3 }}>
+                            <Typography sx={{ fontWeight: 800 }}>{a.title}</Typography>
+                            <Typography sx={{ opacity: 0.75 }}>{a.reason}</Typography>
+                            <Typography sx={{ opacity: 0.6, fontSize: 12 }}>
+                                Severity: {a.severity}
+                            </Typography>
+                            <Box sx={{ display: "flex", gap: 1, mt: 1 }}>
+                                <Button
+                                    size="small"
+                                    variant="outlined"
+                                    onClick={() => {
+                                        setAlertsOpen(false);
+                                        navigate(a.route || "/logs");
+                                    }}
+                                >
+                                    {a.action || "Open"}
+                                </Button>
+                            </Box>
+                        </Paper>
+                    ))}
+                </DialogContent>
+            </Dialog>
         </Box>
     );
 }

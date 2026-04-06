@@ -422,8 +422,11 @@ import { Bar } from "react-chartjs-2";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { useThemeMode } from "../context/ThemeContext";
+import usePersistentState from "../hooks/usePersistentState";
 
 import AlertsPanel from "../components/AlertsPanel";
+import { buildAlerts, defaultRules, saveAlerts } from "../utils/alertsEngine";
+import { readActivity } from "../utils/activity";
 
 const modalStyle = {
     position: "absolute",
@@ -454,6 +457,7 @@ export default function AdminPanel() {
     const [tab, setTab] = useState(0);
     const [users, setUsers] = useState([]);
     const [devices, setDevices] = useState([]);
+    const [alertRules, setAlertRules] = usePersistentState("alert-rules", defaultRules());
 
     // ---------- Users modal ----------
     const [openUserModal, setOpenUserModal] = useState(false);
@@ -508,6 +512,42 @@ export default function AdminPanel() {
             ],
         };
     }, [devices]);
+
+    const deviceInsights = useMemo(() => {
+        const offline = devices.filter((d) => d.online === false).length;
+        const hotCpu = devices.filter((d) => (d.cpu_temp ?? 0) >= 85).length;
+        const hotGpu = devices.filter((d) => (d.gpu_temp ?? 0) >= 80).length;
+        const highRam = devices.filter((d) => (d.ram_used ?? 0) >= 85).length;
+        return { offline, hotCpu, hotGpu, highRam };
+    }, [devices]);
+
+    const roleCounts = useMemo(() => {
+        const counts = {};
+        users.forEach((u) => {
+            const key = u.role || "user";
+            counts[key] = (counts[key] || 0) + 1;
+        });
+        return counts;
+    }, [users]);
+
+    const aiAdminSummary = useMemo(() => {
+        const total = devices.length;
+        const offline = deviceInsights.offline;
+        const hot = deviceInsights.hotCpu + deviceInsights.hotGpu;
+        const headline = total ? `${offline} offline · ${hot} thermal alerts` : "No device data loaded.";
+        const reasons = [];
+        if (offline) reasons.push("Offline devices detected.");
+        if (hot) reasons.push("Thermal thresholds exceeded.");
+        if (deviceInsights.highRam) reasons.push("High RAM usage detected.");
+        return { headline, reasons: reasons.length ? reasons : ["No elevated risk signals detected."] };
+    }, [devices.length, deviceInsights]);
+
+    const adminAlerts = useMemo(() => buildAlerts({ logs: [], devices, rules: alertRules }), [devices, alertRules]);
+    const recentActivity = useMemo(() => readActivity().slice(0, 6), [devices]);
+
+    useEffect(() => {
+        saveAlerts(adminAlerts);
+    }, [adminAlerts]);
 
     // ============================
     // USERS CRUD (based on your users.py)
@@ -844,6 +884,96 @@ export default function AdminPanel() {
                         <Bar data={cpuChart} />
                     </Paper>
 
+                    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2, mb: 3 }}>
+                        <Paper sx={{ p: 3, borderRadius: 4, background: card, border: "1px solid rgba(201,165,95,0.16)" }}>
+                            <Typography sx={{ color: text, mb: 2, fontWeight: 700 }}>
+                                AI Ops Summary
+                            </Typography>
+                            <Typography sx={{ fontWeight: 800, mb: 1 }}>{aiAdminSummary.headline}</Typography>
+                            <Box sx={{ display: "grid", gap: 0.6 }}>
+                                {aiAdminSummary.reasons.map((r, idx) => (
+                                    <Typography key={idx} sx={{ opacity: 0.75 }}>{r}</Typography>
+                                ))}
+                            </Box>
+                        </Paper>
+
+                        <Paper sx={{ p: 3, borderRadius: 4, background: card, border: "1px solid rgba(201,165,95,0.16)" }}>
+                            <Typography sx={{ color: text, mb: 2, fontWeight: 700 }}>
+                                Device Insights
+                            </Typography>
+                            <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                                <Chip label={`Offline: ${deviceInsights.offline}`} color="error" />
+                                <Chip label={`Hot CPU: ${deviceInsights.hotCpu}`} color="warning" />
+                                <Chip label={`Hot GPU: ${deviceInsights.hotGpu}`} color="warning" />
+                                <Chip label={`High RAM: ${deviceInsights.highRam}`} color="warning" />
+                            </Box>
+                        </Paper>
+
+                        <Paper sx={{ p: 3, borderRadius: 4, background: card, border: "1px solid rgba(201,165,95,0.16)" }}>
+                            <Typography sx={{ color: text, mb: 2, fontWeight: 700 }}>
+                                Quick Actions
+                            </Typography>
+                            <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                                <Button variant="outlined" onClick={loadAdmin}>Refresh Data</Button>
+                                <Button variant="outlined" onClick={() => navigate("/hardware")}>Hardware Logs</Button>
+                                <Button variant="outlined" onClick={() => navigate("/logs")}>Incident Logs</Button>
+                                <Button variant="outlined" onClick={() => navigate("/search")}>Diagnostics</Button>
+                            </Box>
+                        </Paper>
+                    </Box>
+
+                    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2, mb: 3 }}>
+                        <Paper sx={{ p: 3, borderRadius: 4, background: card, border: "1px solid rgba(201,165,95,0.16)" }}>
+                            <Typography sx={{ color: text, mb: 2, fontWeight: 700 }}>
+                                Alerts Overview
+                            </Typography>
+                            <Box sx={{ display: "grid", gap: 1 }}>
+                                {adminAlerts.length === 0 && (
+                                    <Typography sx={{ opacity: 0.7, color: text }}>No active alerts.</Typography>
+                                )}
+                                {adminAlerts.slice(0, 5).map((a) => (
+                                    <Box key={a.id}>
+                                        <Typography sx={{ fontWeight: 800, color: text }}>{a.title}</Typography>
+                                        <Typography sx={{ opacity: 0.7, color: text }}>{a.reason}</Typography>
+                                        <Button variant="outlined" size="small" sx={{ mt: 0.5 }} onClick={() => navigate(a.route || "/logs")}>
+                                            {a.action || "Open"}
+                                        </Button>
+                                    </Box>
+                                ))}
+                            </Box>
+                        </Paper>
+
+                        <Paper sx={{ p: 3, borderRadius: 4, background: card, border: "1px solid rgba(201,165,95,0.16)" }}>
+                            <Typography sx={{ color: text, mb: 2, fontWeight: 700 }}>
+                                Recent Activity
+                            </Typography>
+                            <Box sx={{ display: "grid", gap: 1 }}>
+                                {recentActivity.length === 0 && (
+                                    <Typography sx={{ opacity: 0.7, color: text }}>No recent activity.</Typography>
+                                )}
+                                {recentActivity.map((item) => (
+                                    <Box key={item.id} sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
+                                        <Typography sx={{ color: text, fontWeight: 700 }}>{item.label}</Typography>
+                                        <Typography sx={{ opacity: 0.7, color: text, fontSize: 12 }}>
+                                            {new Date(item.ts).toLocaleString()}
+                                        </Typography>
+                                    </Box>
+                                ))}
+                            </Box>
+                        </Paper>
+                    </Box>
+
+                    <Paper sx={{ p: 3, borderRadius: 4, background: card, mb: 3, border: "1px solid rgba(201,165,95,0.16)" }}>
+                        <Typography sx={{ color: text, mb: 2, fontWeight: 700 }}>
+                            User Roles
+                        </Typography>
+                        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                            {Object.entries(roleCounts).map(([role, count]) => (
+                                <Chip key={role} label={`${role}: ${count}`} />
+                            ))}
+                        </Box>
+                    </Paper>
+
                     <AlertsPanel devices={devices} />
                 </Box>
             )}
@@ -1040,6 +1170,33 @@ export default function AdminPanel() {
                                         </span>
                                     </Tooltip>
                                 </Box>
+                            </Box>
+
+                            <Box sx={{ display: "flex", gap: 1, mt: 1, flexWrap: "wrap" }}>
+                                <Button
+                                    size="small"
+                                    variant="outlined"
+                                    onClick={() => {
+                                        localStorage.setItem("search-ip-value", JSON.stringify(d.ip));
+                                        navigate("/search");
+                                    }}
+                                >
+                                    Diagnostics
+                                </Button>
+                                <Button
+                                    size="small"
+                                    variant="outlined"
+                                    onClick={() => navigate("/realtime")}
+                                >
+                                    Realtime
+                                </Button>
+                                <Button
+                                    size="small"
+                                    variant="outlined"
+                                    onClick={() => navigate("/hardware")}
+                                >
+                                    Hardware
+                                </Button>
                             </Box>
                         </Paper>
                     ))}

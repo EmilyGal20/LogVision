@@ -4,10 +4,12 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Typography, Paper, Box, Button } from "@mui/material";
+import { Typography, Paper, Box, Button, Chip } from "@mui/material";
 import { motion } from "framer-motion";
 import { api } from "../api";
 import { useThemeMode } from "../context/ThemeContext";
+import { pushActivity } from "../utils/activity";
+import { recommendFromLogs } from "../utils/aiInsights";
 
 const severityColor = {
     Critical: "#ef4444",
@@ -23,6 +25,8 @@ export default function IssueDetails() {
     const [issue, setIssue] = useState(null);
     const [pingHistory, setPingHistory] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [related, setRelated] = useState([]);
+    const [aiRecs, setAiRecs] = useState([]);
 
     // ============================================================
     // LOAD ISSUE — supports REAL + JSON format
@@ -35,6 +39,12 @@ export default function IssueDetails() {
 
             if (res.data) {
                 setIssue(res.data);
+                pushActivity({
+                    type: "issue_view",
+                    label: `Viewed issue: ${res.data.error_type} ${res.data.ip}`,
+                    ip: res.data.ip,
+                    route: `/issue/${id}`,
+                });
 
                 // JSON logs → skip ping history
                 if (res.data.source === "json") {
@@ -47,6 +57,17 @@ export default function IssueDetails() {
                 if (res.data.ip) {
                     const p = await api.get(`/realtime/history/${res.data.ip}`);
                     setPingHistory(p.data.slice(-20));
+
+                    try {
+                        const r = await api.get("/logs/search", { params: { ip: res.data.ip } });
+                        const list = Array.isArray(r.data) ? r.data : [];
+                        const filtered = list.filter((l) => String(l.id) !== String(id));
+                        setRelated(filtered.slice(0, 6));
+                        setAiRecs(recommendFromLogs(list));
+                    } catch {
+                        setRelated([]);
+                        setAiRecs([]);
+                    }
                 }
             } else {
                 setIssue(null);
@@ -226,6 +247,82 @@ export default function IssueDetails() {
 
                 {/* TIMELINE + PING */}
                 <Box sx={{ display: "grid", gap: 2 }}>
+                    <Paper className="lv-panel" sx={{ background: cardBackground, border: subtleBorder }}>
+                        <Typography variant="h6" sx={{ mb: 1, color: textColor }}>
+                            Quick Actions
+                        </Typography>
+                        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                            <Button
+                                variant="outlined"
+                                onClick={() => {
+                                    if (issue?.ip) {
+                                        localStorage.setItem("search-ip-value", JSON.stringify(issue.ip));
+                                    }
+                                    navigate("/search");
+                                }}
+                            >
+                                Open Search
+                            </Button>
+                            <Button variant="outlined" onClick={() => navigate("/realtime")}>
+                                Realtime Monitor
+                            </Button>
+                            <Button variant="outlined" onClick={() => navigate("/hardware")}>
+                                Hardware Logs
+                            </Button>
+                            <Button
+                                variant="outlined"
+                                onClick={() => {
+                                    if (!issue?.ip) return;
+                                    navigator.clipboard?.writeText?.(issue.ip);
+                                }}
+                            >
+                                Copy IP
+                            </Button>
+                            {issue?.status !== "resolved" && issue?.source !== "json" && (
+                                <Button variant="contained" color="success" onClick={fixIssue}>
+                                    Resolve
+                                </Button>
+                            )}
+                        </Box>
+
+                        <Box sx={{ mt: 2, display: "grid", gap: 1 }}>
+                            <Typography sx={{ color: textColor, fontWeight: 800 }}>
+                                Related Incidents
+                            </Typography>
+                            {related.length === 0 && (
+                                <Typography sx={{ opacity: 0.7, color: textColor }}>
+                                    No related incidents found.
+                                </Typography>
+                            )}
+                            <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                                {related.map((r) => (
+                                    <Chip
+                                        key={r.id}
+                                        label={`${r.error_type} · ${r.severity}`}
+                                        onClick={() => navigate(`/issue/${r.id}`)}
+                                    />
+                                ))}
+                            </Box>
+                        </Box>
+                        <Box sx={{ mt: 2, display: "grid", gap: 0.6 }}>
+                            <Typography sx={{ color: textColor, fontWeight: 800 }}>
+                                Recommended Next Steps
+                            </Typography>
+                            {aiRecs.length === 0 && (
+                                <Typography sx={{ opacity: 0.7, color: textColor }}>
+                                    No recommendations yet.
+                                </Typography>
+                            )}
+                            {aiRecs.map((rec, idx) => (
+                                <Box key={idx}>
+                                    <Typography sx={{ fontWeight: 800 }}>{rec.title}</Typography>
+                                    <Typography sx={{ opacity: 0.7 }}>{rec.reason}</Typography>
+                                    <Typography sx={{ opacity: 0.6, fontSize: 12 }}>{rec.action}</Typography>
+                                </Box>
+                            ))}
+                        </Box>
+                    </Paper>
+
                     <Paper className="lv-panel" sx={{ background: cardBackground, border: subtleBorder, position: "relative" }}>
                         <Typography variant="h6" sx={{ mb: 2, color: textColor }}>
                             Issue Timeline

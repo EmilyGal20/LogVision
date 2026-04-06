@@ -1264,6 +1264,8 @@ import {
 
 import { useThemeMode } from "../context/ThemeContext";
 import { useNavigate } from "react-router-dom";
+import { pushActivity } from "../utils/activity";
+import { analyzeLogs, recommendFromLogs } from "../utils/aiInsights";
 
 // ICONS
 // import MemoryIcon from "@mui/icons-material/Memory";
@@ -1363,6 +1365,15 @@ export default function SearchIP() {
     const [ip, setIp] = usePersistentState("search-ip-value", "");
     const [errorType, setErrorType] = usePersistentState("search-error-type", "");
     const [severityFilter, setSeverityFilter] = usePersistentState("severity-filter", "");
+    const [recentTargets, setRecentTargets] = usePersistentState("search-recent-targets", []);
+    const [savedTargets, setSavedTargets] = usePersistentState("search-saved-targets", []);
+    const [savedSearches, setSavedSearches] = usePersistentState("search-saved-searches", []);
+    const [savedSearchName, setSavedSearchName] = useState("");
+    const [compareMode, setCompareMode] = useState(false);
+    const [compareIp, setCompareIp] = useState("");
+    const [compareLoading, setCompareLoading] = useState(false);
+    const [compareDevice, setCompareDevice] = useState(null);
+    const [compareLogs, setCompareLogs] = useState([]);
     // const [showDemoOnly, setShowDemoOnly] = usePersistentState("show-demo-only", false); // demo kept as comments
 
     // ✅ FIX: define showDemoOnly so references won't crash (demo feature currently disabled)
@@ -1776,6 +1787,67 @@ export default function SearchIP() {
         return { counts, score, score100 };
     }, [risks]);
 
+    const resultSummary = useMemo(() => {
+        const bySource = risks.reduce((acc, r) => {
+            acc[r.source] = (acc[r.source] || 0) + 1;
+            return acc;
+        }, {});
+        return {
+            total: risks.length,
+            hardware: bySource.hardware || 0,
+            connectivity: bySource.connectivity || 0,
+            logs: bySource.log || 0,
+        };
+    }, [risks]);
+
+    const netMetrics = useMemo(() => {
+        const latency = netInfo?.latency_ms ?? null;
+        const loss = netInfo?.packet_loss_pct ?? null;
+        const jitter = netInfo?.jitter_ms ?? null;
+
+        const portsObj = netInfo?.ports && typeof netInfo.ports === "object" ? netInfo.ports : null;
+        const openCount = portsObj ? Object.values(portsObj).filter((v) => v === true).length : null;
+
+        return {
+            latency: fmtNum(latency),
+            loss: loss === null || loss === undefined ? null : fmtNum(loss, 1),
+            jitter: fmtNum(jitter),
+            openCount,
+            latencyTone: metricTone("latencyMs", Number(latency)),
+            lossTone: metricTone("lossPct", Number(loss)),
+            jitterTone: metricTone("jitterMs", Number(jitter)),
+            portsTone: metricTone("portsOpen", Number(openCount)),
+        };
+    }, [netInfo]);
+
+    const aiTargetSummary = useMemo(() => {
+        const reasons = [];
+        const logsAnalysis = analyzeLogs(results);
+
+        if (deviceInfo?.online === false) reasons.push("Device is offline.");
+        if ((deviceInfo?.cpu_temp ?? 0) >= 85) reasons.push("CPU temperature is high.");
+        if ((deviceInfo?.ram_used ?? 0) >= 85) reasons.push("RAM usage is high.");
+        if (netMetrics.loss != null && Number(netMetrics.loss) >= 5) reasons.push("Packet loss detected.");
+        if (logsAnalysis.counts.critical > 0) reasons.push(`${logsAnalysis.counts.critical} critical incidents in logs.`);
+
+        return {
+            headline: ip ? `AI summary for ${ip}` : "AI summary unavailable",
+            reasons: reasons.length ? reasons : ["No elevated risk signals detected."],
+        };
+    }, [deviceInfo, netMetrics, results, ip]);
+
+    const aiTargetRecs = useMemo(() => {
+        const recs = recommendFromLogs(results);
+        if (deviceInfo?.online === false) {
+            recs.unshift({
+                title: "Check connectivity",
+                reason: "Target is reporting offline state.",
+                action: "Ping or open Realtime monitor",
+            });
+        }
+        return recs.slice(0, 4);
+    }, [results, deviceInfo]);
+
     // ------------------------------------------------------
     // OPTION 3: Last Logs Snapshot (Real)
     // ------------------------------------------------------
@@ -2127,7 +2199,17 @@ export default function SearchIP() {
         if (severityFilter) realLogs = realLogs.filter((l) => l.severity === severityFilter);
 
         setResults(realLogs);
-    }, [ip, errorType, severityFilter, setResults, fetchDeviceInfo, fetchConnectivity]);
+        setRecentTargets((prev) => {
+            const next = [ip, ...prev.filter((x) => x !== ip)].slice(0, 6);
+            return next;
+        });
+        pushActivity({
+            type: "search",
+            label: `Diagnostics search: ${ip}`,
+            ip,
+            route: "/search",
+        });
+    }, [ip, errorType, severityFilter, setResults, fetchDeviceInfo, fetchConnectivity, setRecentTargets]);
 
     // ------------------------------------------------------
     // RESET
@@ -2152,6 +2234,94 @@ export default function SearchIP() {
         setHttpErr("");
         setDiagData(null);
         setDiagErr("");
+    };
+
+    const saveTarget = () => {
+        const target = ip?.trim();
+        if (!target) return;
+        setSavedTargets((prev) => [target, ...prev.filter((x) => x !== target)].slice(0, 8));
+    };
+
+    const removeSavedTarget = (target) => {
+        setSavedTargets((prev) => prev.filter((x) => x !== target));
+    };
+
+    const saveSearch = () => {
+        const name = savedSearchName.trim() || ip?.trim();
+        if (!name) return;
+        const entry = {
+            id: Date.now(),
+            name,
+            ip,
+            ports: portsStr,
+            errorType,
+            severityFilter,
+        };
+        setSavedSearches((prev) => [entry, ...prev.filter((s) => s.name !== name)].slice(0, 8));
+        setSavedSearchName("");
+    };
+
+    const applySearch = (entry) => {
+        if (!entry) return;
+        setIp(entry.ip || "");
+        setPortsStr(entry.ports || "");
+        setErrorType(entry.errorType || "");
+        setSeverityFilter(entry.severityFilter || "");
+    };
+
+    const runCompare = async () => {
+        const target = compareIp.trim();
+        if (!target) return;
+        setCompareLoading(true);
+        try {
+            const deviceRes = await api.get(`/devices/${target}`);
+            setCompareDevice(deviceRes.data || null);
+        } catch {
+            setCompareDevice(null);
+        }
+
+        try {
+            const res = await api.get("/logs/search", { params: { ip: target } });
+            setCompareLogs(Array.isArray(res.data) ? res.data : []);
+        } catch {
+            setCompareLogs([]);
+        } finally {
+            setCompareLoading(false);
+        }
+    };
+
+    const buildSnapshot = () => {
+        const target = deviceInfo?.ip || netInfo?.ip || ip || "-";
+        const lines = [
+            `Target: ${target}`,
+            `Device: ${deviceInfo?.hostname || netInfo?.hostname || "-"}`,
+            `Online: ${deviceInfo?.online ?? netInfo?.reachable ?? "-"}`,
+            `CPU: ${deviceInfo?.cpu_temp ?? "-"}C`,
+            `GPU: ${deviceInfo?.gpu_temp ?? "-"}C`,
+            `RAM: ${deviceInfo?.ram_used ?? "-"}%`,
+            `SSD: ${deviceInfo?.disk_health?.ssd ?? "-"}%`,
+            `Ports Open: ${netMetrics.openCount ?? "-"}`,
+            `Latency: ${netMetrics.latency ?? "-"}`,
+            `Packet Loss: ${netMetrics.loss ?? "-"}`,
+            `Jitter: ${netMetrics.jitter ?? "-"}`,
+            `Risks: ${risks.length}`,
+            `Risk Score: ${riskSummary.score100}/100`,
+        ];
+        return lines.join("\\n");
+    };
+
+    const copySnapshot = async () => {
+        const snapshot = buildSnapshot();
+        try {
+            await navigator.clipboard.writeText(snapshot);
+        } catch {
+            const area = document.createElement("textarea");
+            area.value = snapshot;
+            document.body.appendChild(area);
+            area.select();
+            document.execCommand("copy");
+            area.remove();
+        }
     };
 
     // ------------------------------------------------------
@@ -2243,26 +2413,6 @@ export default function SearchIP() {
     }, [deviceInfo]);
 
     // NEW: connectivity metrics shown במקום הקיים (בלי להרוס את המבנה)
-    const netMetrics = useMemo(() => {
-        const latency = netInfo?.latency_ms ?? null;
-        const loss = netInfo?.packet_loss_pct ?? null;
-        const jitter = netInfo?.jitter_ms ?? null;
-
-        const portsObj = netInfo?.ports && typeof netInfo.ports === "object" ? netInfo.ports : null;
-        const openCount = portsObj ? Object.values(portsObj).filter((v) => v === true).length : null;
-
-        return {
-            latency: fmtNum(latency),
-            loss: loss === null || loss === undefined ? null : fmtNum(loss, 1),
-            jitter: fmtNum(jitter),
-            openCount,
-            latencyTone: metricTone("latencyMs", Number(latency)),
-            lossTone: metricTone("lossPct", Number(loss)),
-            jitterTone: metricTone("jitterMs", Number(jitter)),
-            portsTone: metricTone("portsOpen", Number(openCount)),
-        };
-    }, [netInfo]);
-
     const portsForRender = useMemo(() => {
         const portsObj = netInfo?.ports && typeof netInfo.ports === "object" ? netInfo.ports : null;
         if (!portsObj) return [];
@@ -2312,6 +2462,19 @@ export default function SearchIP() {
                         />
 
                         <TextField
+                            select
+                            label="Recent Searches"
+                            value=""
+                            onChange={(e) => setIp(e.target.value)}
+                            fullWidth
+                        >
+                            <MenuItem value="">Select recent</MenuItem>
+                            {recentTargets.map((target) => (
+                                <MenuItem key={target} value={target}>{target}</MenuItem>
+                            ))}
+                        </TextField>
+
+                        <TextField
                             label="Ports to check (TCP)"
                             value={portsStr}
                             onChange={(e) => setPortsStr(e.target.value)}
@@ -2347,6 +2510,36 @@ export default function SearchIP() {
                     </Box>
 
                     <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1.5, mt: 2 }}>
+                        <TextField
+                            select
+                            label="Saved Searches"
+                            value=""
+                            onChange={(e) => {
+                                const found = savedSearches.find((s) => String(s.id) === String(e.target.value));
+                                applySearch(found);
+                            }}
+                            fullWidth
+                        >
+                            <MenuItem value="">Select saved</MenuItem>
+                            {savedSearches.map((entry) => (
+                                <MenuItem key={entry.id} value={entry.id}>{entry.name}</MenuItem>
+                            ))}
+                        </TextField>
+
+                        <Box sx={{ display: "flex", gap: 1 }}>
+                            <TextField
+                                label="Save search as"
+                                value={savedSearchName}
+                                onChange={(e) => setSavedSearchName(e.target.value)}
+                                fullWidth
+                            />
+                            <Button variant="outlined" onClick={saveSearch} disabled={!ip}>
+                                Save
+                            </Button>
+                        </Box>
+                    </Box>
+
+                    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1.5, mt: 2 }}>
                         <Button
                             variant="contained"
                             onClick={() => setOpenAddLog(true)}
@@ -2376,6 +2569,60 @@ export default function SearchIP() {
                         >
                             Reset Console
                         </Button>
+                        <Button
+                            variant={compareMode ? "contained" : "outlined"}
+                            onClick={() => setCompareMode((v) => !v)}
+                        >
+                            {compareMode ? "Exit Compare" : "Compare IPs"}
+                        </Button>
+                    </Box>
+
+                    {compareMode && (
+                        <Box sx={{ mt: 2, display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr auto" }, gap: 1.5 }}>
+                            <TextField
+                                label="Compare IP"
+                                value={compareIp}
+                                onChange={(e) => setCompareIp(e.target.value)}
+                                fullWidth
+                            />
+                            <Button variant="contained" onClick={runCompare} disabled={compareLoading || !compareIp}>
+                                {compareLoading ? "Comparing..." : "Run Compare"}
+                            </Button>
+                        </Box>
+                    )}
+
+                    <Box sx={{ mt: 2, display: "grid", gap: 1.2 }}>
+                        <Typography sx={{ fontWeight: 800, color: textColor }}>
+                            Target History
+                        </Typography>
+                        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                            {recentTargets.length === 0 && (
+                                <Typography sx={{ opacity: 0.7, color: textColor }}>
+                                    No recent targets.
+                                </Typography>
+                            )}
+                            {recentTargets.map((target) => (
+                                <Chip
+                                    key={target}
+                                    label={target}
+                                    onClick={() => setIp(target)}
+                                />
+                            ))}
+                        </Box>
+
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+                            <Button variant="outlined" size="small" onClick={saveTarget} disabled={!ip}>
+                                Save Target
+                            </Button>
+                            {savedTargets.map((target) => (
+                                <Chip
+                                    key={target}
+                                    label={target}
+                                    onClick={() => setIp(target)}
+                                    onDelete={() => removeSavedTarget(target)}
+                                />
+                            ))}
+                        </Box>
                     </Box>
                 </Paper>
 
@@ -2811,12 +3058,92 @@ export default function SearchIP() {
                         <span style={{ fontSize: 12, fontWeight: 900, opacity: 0.8 }}> / 100</span>
                     </Typography>
                 </Box>
+                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                    <Button variant="outlined" size="small" onClick={copySnapshot}>
+                        Copy Snapshot
+                    </Button>
+                    <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => navigate("/logs")}
+                    >
+                        Open Logs
+                    </Button>
+                </Box>
                 </Paper>
+
+                <Paper className="lv-panel">
+                    <Typography sx={{ color: textColor, fontWeight: 800, mb: 1 }}>
+                        Result Summary
+                    </Typography>
+                    <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                        <Chip label={`Total Risks: ${resultSummary.total}`} />
+                        <Chip label={`Hardware: ${resultSummary.hardware}`} />
+                        <Chip label={`Connectivity: ${resultSummary.connectivity}`} />
+                        <Chip label={`Logs: ${resultSummary.logs}`} />
+                    </Box>
+                </Paper>
+
+                <Paper className="lv-panel">
+                    <Typography sx={{ color: textColor, fontWeight: 800, mb: 1 }}>
+                        AI Target Insight
+                    </Typography>
+                    <Typography sx={{ fontWeight: 800, mb: 1 }}>{aiTargetSummary.headline}</Typography>
+                    <Box sx={{ display: "grid", gap: 0.6 }}>
+                        {aiTargetSummary.reasons.map((r, i) => (
+                            <Typography key={i} sx={{ opacity: 0.8 }}>{r}</Typography>
+                        ))}
+                    </Box>
+                </Paper>
+
+                <Paper className="lv-panel">
+                    <Typography sx={{ color: textColor, fontWeight: 800, mb: 1 }}>
+                        Recommended Next Steps
+                    </Typography>
+                    <Box sx={{ display: "grid", gap: 1 }}>
+                        {aiTargetRecs.length === 0 && (
+                            <Typography sx={{ opacity: 0.7 }}>No recommendations yet.</Typography>
+                        )}
+                        {aiTargetRecs.map((rec, idx) => (
+                            <Box key={idx} sx={{ display: "grid", gap: 0.3 }}>
+                                <Typography sx={{ fontWeight: 800 }}>{rec.title}</Typography>
+                                <Typography sx={{ opacity: 0.7 }}>{rec.reason}</Typography>
+                                <Typography sx={{ opacity: 0.6, fontSize: 12 }}>{rec.action}</Typography>
+                            </Box>
+                        ))}
+                    </Box>
+                </Paper>
+
+                {compareMode && (
+                    <Paper className="lv-panel">
+                        <Typography sx={{ color: textColor, fontWeight: 800, mb: 1 }}>
+                            Comparison Panel
+                        </Typography>
+                        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2 }}>
+                            <Paper className="lv-module">
+                                <Typography sx={{ opacity: 0.7 }}>Primary Target</Typography>
+                                <Typography sx={{ fontWeight: 900 }}>{deviceInfo?.ip || ip || "-"}</Typography>
+                                <Typography sx={{ opacity: 0.7 }}>
+                                    Logs: {results.length} · Risks: {risks.length}
+                                </Typography>
+                            </Paper>
+                            <Paper className="lv-module">
+                                <Typography sx={{ opacity: 0.7 }}>Compare Target</Typography>
+                                <Typography sx={{ fontWeight: 900 }}>{compareDevice?.ip || compareIp || "-"}</Typography>
+                                <Typography sx={{ opacity: 0.7 }}>
+                                    Logs: {compareLogs.length} · Device: {compareDevice?.hostname || "N/A"}
+                                </Typography>
+                            </Paper>
+                        </Box>
+                    </Paper>
+                )}
 
                 {/* RESULTS LIST — RISKS (No Demo) */}
                 <Paper className="lv-panel">
                 {risks.length === 0 ? (
-                    <Typography sx={{ color: textColor }}>No risks detected for this IP.</Typography>
+                    <Typography sx={{ color: textColor }}>
+                        No risks detected for this IP. Run diagnostics or broaden filters.
+                    </Typography>
                 ) : (
                     risks.map((r) => (
                         <Box
@@ -2857,11 +3184,11 @@ export default function SearchIP() {
                                 <Typography sx={{ opacity: 0.85, color: textColor }}>{r.detail}</Typography>
                             </Box>
 
-                            <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", justifyContent: "flex-end" }}>
-                                {(r.source === "hardware" || r.source === "connectivity") && (deviceInfo?.ip || ip) && (
-                                    <>
-                                        <Button
-                                            variant="outlined"
+                                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                                    {(r.source === "hardware" || r.source === "connectivity") && (deviceInfo?.ip || ip) && (
+                                        <>
+                                            <Button
+                                                variant="outlined"
                                             size="small"
                                             onClick={() => pingNow(deviceInfo?.ip || ip)}
                                             disabled={!isAdmin || showDemoOnly}
@@ -2898,11 +3225,30 @@ export default function SearchIP() {
                                                     computer_name: deviceInfo?.hostname || netInfo?.hostname || `pc-${ip}`,
                                                 });
                                             }}
-                                        >
-                                            + Log
-                                        </Button>
-                                    </>
-                                )}
+                                            >
+                                                + Log
+                                            </Button>
+                                        </>
+                                    )}
+
+                                    {(deviceInfo?.ip || ip) && (
+                                        <>
+                                            <Button
+                                                variant="outlined"
+                                                size="small"
+                                                onClick={() => navigate("/realtime")}
+                                            >
+                                                Realtime
+                                            </Button>
+                                            <Button
+                                                variant="outlined"
+                                                size="small"
+                                                onClick={() => navigate("/hardware")}
+                                            >
+                                                Hardware
+                                            </Button>
+                                        </>
+                                    )}
 
                                 {/* {r.source === "log" && r.is_real && (
   <Button

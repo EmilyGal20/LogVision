@@ -4,11 +4,13 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { api } from "../api";
-import { Box, Typography, TextField, Button, Paper } from "@mui/material";
+import { Box, Typography, TextField, Button, Paper, Chip } from "@mui/material";
 import { useThemeMode } from "../context/ThemeContext";
+import usePersistentState from "../hooks/usePersistentState";
 import { Line, Doughnut } from "react-chartjs-2";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
+import { pushActivity } from "../utils/activity";
 
 import {
     Chart as ChartJS,
@@ -71,6 +73,8 @@ export default function RealtimeIP() {
     ——————————————————————————— */
     const [ip, setIp] = useState("");
     const [activeIP, setActiveIP] = useState(null);
+    const [pinnedIPs, setPinnedIPs] = usePersistentState("realtime-pins", []);
+    const [sessionHistory, setSessionHistory] = usePersistentState("realtime-history", []);
 
     // Availability + status
     const [latencyHistory, setLatencyHistory] = useState([]); // ✅ צריך גם לקרוא לזה (Ping)
@@ -295,6 +299,16 @@ export default function RealtimeIP() {
         setActiveIP(ipToStart);
         activeIPRef.current = ipToStart;
         resetCharts();
+        setSessionHistory((prev) => [
+            { ip: ipToStart, ts: Date.now() },
+            ...prev.filter((s) => s.ip !== ipToStart),
+        ].slice(0, 8));
+        pushActivity({
+            type: "realtime_start",
+            label: `Realtime monitoring: ${ipToStart}`,
+            ip: ipToStart,
+            route: "/realtime",
+        });
 
         if (wsRef.current) wsRef.current.close();
 
@@ -367,6 +381,15 @@ export default function RealtimeIP() {
         if (!ipToStart) return;
 
         startIP(ipToStart, true);
+    };
+
+    const pinTarget = (target) => {
+        if (!target) return;
+        setPinnedIPs((prev) => [target, ...prev.filter((x) => x !== target)].slice(0, 8));
+    };
+
+    const unpinTarget = (target) => {
+        setPinnedIPs((prev) => prev.filter((x) => x !== target));
     };
 
 
@@ -910,12 +933,59 @@ export default function RealtimeIP() {
                         >
                             {speedEnabled ? "Speedtest: ON" : "Speedtest: OFF"}
                         </Button>
+
+                        <Button
+                            variant="outlined"
+                            onClick={() => pinTarget(activeIP || ip)}
+                            disabled={!activeIP && !ip}
+                        >
+                            Pin Target
+                        </Button>
+
+                        <Button
+                            variant="outlined"
+                            onClick={() => activeIP && startIP(activeIP, true)}
+                            disabled={!activeIP}
+                        >
+                            Restart Active
+                        </Button>
                     </Box>
 
                     <Box sx={{ mt: 2, display: "flex", gap: 2, alignItems: "center", flexWrap: "wrap" }}>
                         <Typography sx={{ color: mutedText }}>
                             Ping: <b style={{ color: textColor }}>{pingMs ?? "—"}</b> ms
                         </Typography>
+                    </Box>
+
+                    <Box sx={{ mt: 2, display: "flex", gap: 1, flexWrap: "wrap" }}>
+                        {pinnedIPs.length === 0 && (
+                            <Typography sx={{ color: mutedText }}>No pinned targets yet.</Typography>
+                        )}
+                        {pinnedIPs.map((target) => (
+                            <Chip
+                                key={target}
+                                label={target}
+                                onClick={() => startIP(target, true)}
+                                onDelete={() => unpinTarget(target)}
+                                sx={{ fontWeight: 800 }}
+                            />
+                        ))}
+                    </Box>
+
+                    <Box sx={{ mt: 2, display: "grid", gap: 1 }}>
+                        <Typography sx={{ color: mutedText }}>Recent Sessions</Typography>
+                        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                            {sessionHistory.length === 0 && (
+                                <Typography sx={{ color: mutedText }}>No sessions yet.</Typography>
+                            )}
+                            {sessionHistory.map((s) => (
+                                <Chip
+                                    key={`${s.ip}-${s.ts}`}
+                                    label={`${s.ip}`}
+                                    onClick={() => startIP(s.ip, true)}
+                                />
+                            ))}
+                        </Box>
                     </Box>
 
                     <Box sx={{ mt: 2 }}>

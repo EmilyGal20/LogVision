@@ -3,7 +3,7 @@
 /////////////////////////////////////////////
 // import { useMemo } from "react";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { api } from "../api";
 import usePersistentState from "../hooks/usePersistentState";
 
@@ -27,6 +27,8 @@ import {
     Tab,
     Pagination,
     Fade,
+    Switch,
+    FormControlLabel,
 } from "@mui/material";
 
 import DownloadIcon from "@mui/icons-material/Download";
@@ -42,6 +44,7 @@ import { Bar, Doughnut } from "react-chartjs-2";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 import { useThemeMode } from "../context/ThemeContext";
+import { analyzeLogs, recommendFromLogs } from "../utils/aiInsights";
 
 ////////////////////////////////////////////////////
 //  MAIN COMPONENT
@@ -61,6 +64,17 @@ export default function HardwareLogs() {
     });
     const [tab, setTab] = usePersistentState("hw-tab", "all");
     const [page, setPage] = usePersistentState("hw-page", 1);
+    const [autoRefresh, setAutoRefresh] = usePersistentState("hw-auto-refresh", false);
+    const [refreshInterval, setRefreshInterval] = usePersistentState("hw-refresh-interval", 30);
+    const [density, setDensity] = usePersistentState("hw-density", "comfortable");
+    const [hwColumns, setHwColumns] = usePersistentState("hw-columns", {
+        computer: true,
+        ip: true,
+        description: true,
+        status: true,
+        created: true,
+    });
+    const [sortBy, setSortBy] = usePersistentState("hw-sort", "newest");
 
     // Not persistent
     const [logs, setLogs] = useState([]);
@@ -173,6 +187,14 @@ export default function HardwareLogs() {
                     (l) => new Date(l.created_at) <= new Date(filters.to)
                 );
 
+            if (sortBy === "oldest") {
+                data = data.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+            } else if (sortBy === "status") {
+                data = data.sort((a, b) => String(a.status || "").localeCompare(String(b.status || "")));
+            } else {
+                data = data.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+            }
+
             // Fallback to demo if empty
             // if (data.length === 0) data = demoHardware;
 
@@ -184,12 +206,18 @@ export default function HardwareLogs() {
         } finally {
             setLoading(false);
         }
-    }, [ipList, filters, tab]);
+    }, [ipList, filters, tab, sortBy]);
 
     useEffect(() => {
         const delay = setTimeout(loadLogs, 300);
         return () => clearTimeout(delay);
     }, [loadLogs]);
+
+    useEffect(() => {
+        if (!autoRefresh) return;
+        const id = setInterval(loadLogs, Math.max(10, Number(refreshInterval) || 30) * 1000);
+        return () => clearInterval(id);
+    }, [autoRefresh, refreshInterval, loadLogs]);
 
     //////////////////////////////////////////////////
     // Icons
@@ -275,18 +303,32 @@ export default function HardwareLogs() {
     //////////////////////////////////////////////////
     // Stats
     //////////////////////////////////////////////////
-    const stats = {
-        cpu: logs.filter((l) => l.description.toLowerCase().includes("cpu")).length,
-        ram: logs.filter((l) => l.description.toLowerCase().includes("ram")).length,
-        gpu: logs.filter((l) => l.description.toLowerCase().includes("gpu")).length,
-        disk: logs.filter(
-            (l) =>
-                l.description.toLowerCase().includes("ssd") ||
-                l.description.toLowerCase().includes("disk")
-        ).length,
-        fan: logs.filter((l) => l.description.toLowerCase().includes("fan")).length,
-        total: logs.length,
-    };
+    const stats = useMemo(() => {
+        return {
+            cpu: logs.filter((l) => l.description.toLowerCase().includes("cpu")).length,
+            ram: logs.filter((l) => l.description.toLowerCase().includes("ram")).length,
+            gpu: logs.filter((l) => l.description.toLowerCase().includes("gpu")).length,
+            disk: logs.filter(
+                (l) =>
+                    l.description.toLowerCase().includes("ssd") ||
+                    l.description.toLowerCase().includes("disk")
+            ).length,
+            fan: logs.filter((l) => l.description.toLowerCase().includes("fan")).length,
+            total: logs.length,
+        };
+    }, [logs]);
+
+    const aiHardwareSummary = useMemo(() => {
+        const analysis = analyzeLogs(logs);
+        const reasons = [];
+        if (analysis.counts.critical > 0) reasons.push(`${analysis.counts.critical} critical hardware incidents.`);
+        if (stats.cpu > 0) reasons.push(`CPU-related incidents: ${stats.cpu}.`);
+        if (stats.disk > 0) reasons.push(`Storage-related incidents: ${stats.disk}.`);
+        if (!reasons.length) reasons.push("No elevated hardware risk signals.");
+        return { headline: `${analysis.counts.total} incidents · ${analysis.counts.open} open`, reasons };
+    }, [logs, stats]);
+
+    const aiHardwareRecs = useMemo(() => recommendFromLogs(logs), [logs]);
 
     //////////////////////////////////////////////////
     // PDF Export
@@ -452,9 +494,95 @@ export default function HardwareLogs() {
                         Clear
                     </Button>
                 </Box>
+
+                <Box sx={{ display: "flex", gap: 2, alignItems: "center", flexWrap: "wrap", mt: 2 }}>
+                    <FormControlLabel
+                        control={(
+                            <Switch
+                                checked={autoRefresh}
+                                onChange={(e) => setAutoRefresh(e.target.checked)}
+                            />
+                        )}
+                        label="Auto refresh"
+                    />
+                    <TextField
+                        select
+                        label="Interval (sec)"
+                        value={refreshInterval}
+                        onChange={(e) => setRefreshInterval(Number(e.target.value))}
+                        sx={{ width: 160 }}
+                    >
+                        {[15, 30, 60, 120].map((val) => (
+                            <MenuItem key={val} value={val}>{val}</MenuItem>
+                        ))}
+                    </TextField>
+                    <TextField
+                        select
+                        label="Density"
+                        value={density}
+                        onChange={(e) => setDensity(e.target.value)}
+                        sx={{ width: 160 }}
+                    >
+                        <MenuItem value="comfortable">Comfortable</MenuItem>
+                        <MenuItem value="compact">Compact</MenuItem>
+                    </TextField>
+                    <TextField
+                        select
+                        label="Sort"
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value)}
+                        sx={{ width: 160 }}
+                    >
+                        <MenuItem value="newest">Newest</MenuItem>
+                        <MenuItem value="oldest">Oldest</MenuItem>
+                        <MenuItem value="status">Status</MenuItem>
+                    </TextField>
+                    <TextField
+                        select
+                        label="Columns"
+                        value="custom"
+                        sx={{ width: 180 }}
+                        SelectProps={{ renderValue: () => "Customize" }}
+                    >
+                        <MenuItem onClick={() => setHwColumns((c) => ({ ...c, computer: !c.computer }))}>
+                            {hwColumns.computer ? "Hide Computer" : "Show Computer"}
+                        </MenuItem>
+                        <MenuItem onClick={() => setHwColumns((c) => ({ ...c, ip: !c.ip }))}>
+                            {hwColumns.ip ? "Hide IP" : "Show IP"}
+                        </MenuItem>
+                        <MenuItem onClick={() => setHwColumns((c) => ({ ...c, description: !c.description }))}>
+                            {hwColumns.description ? "Hide Description" : "Show Description"}
+                        </MenuItem>
+                        <MenuItem onClick={() => setHwColumns((c) => ({ ...c, status: !c.status }))}>
+                            {hwColumns.status ? "Hide Status" : "Show Status"}
+                        </MenuItem>
+                        <MenuItem onClick={() => setHwColumns((c) => ({ ...c, created: !c.created }))}>
+                            {hwColumns.created ? "Hide Created" : "Show Created"}
+                        </MenuItem>
+                    </TextField>
+                </Box>
                 </Paper>
 
                 <Box sx={{ display: "grid", gap: 2 }}>
+                    <Paper className="lv-panel">
+                        <Typography variant="h6" sx={{ mb: 1, fontWeight: 800 }}>
+                            AI Hardware Summary
+                        </Typography>
+                        <Typography sx={{ fontWeight: 800, mb: 1 }}>{aiHardwareSummary.headline}</Typography>
+                        <Box sx={{ display: "grid", gap: 0.6 }}>
+                            {aiHardwareSummary.reasons.map((r, idx) => (
+                                <Typography key={idx} sx={{ opacity: 0.75 }}>{r}</Typography>
+                            ))}
+                        </Box>
+                        <Box sx={{ mt: 1, display: "grid", gap: 0.6 }}>
+                            {aiHardwareRecs.slice(0, 2).map((rec, idx) => (
+                                <Box key={idx}>
+                                    <Typography sx={{ fontWeight: 800 }}>{rec.title}</Typography>
+                                    <Typography sx={{ opacity: 0.7 }}>{rec.reason}</Typography>
+                                </Box>
+                            ))}
+                        </Box>
+                    </Paper>
                     {/* TABS */}
                     <Paper className="lv-panel" sx={{ padding: 0 }}>
                         <Tabs
@@ -474,15 +602,15 @@ export default function HardwareLogs() {
                     {/* TABLE */}
                     <Fade in timeout={400}>
                         <TableContainer component={Paper} className="lv-panel">
-                            <Table>
+                            <Table size={density === "compact" ? "small" : "medium"}>
                         <TableHead>
                             <TableRow>
                                 <TableCell>ID</TableCell>
-                                <TableCell>Computer</TableCell>
-                                <TableCell>IP</TableCell>
-                                <TableCell>Description</TableCell>
-                                <TableCell>Status</TableCell>
-                                <TableCell>Created</TableCell>
+                                {hwColumns.computer && <TableCell>Computer</TableCell>}
+                                {hwColumns.ip && <TableCell>IP</TableCell>}
+                                {hwColumns.description && <TableCell>Description</TableCell>}
+                                {hwColumns.status && <TableCell>Status</TableCell>}
+                                {hwColumns.created && <TableCell>Created</TableCell>}
                                 <TableCell />
                             </TableRow>
                         </TableHead>
@@ -493,29 +621,35 @@ export default function HardwareLogs() {
                                 paginated.map((log) => (
                                     <TableRow key={log.id}>
                                         <TableCell>{log.id}</TableCell>
-                                        <TableCell>{log.computer_name}</TableCell>
-                                        <TableCell>{log.ip}</TableCell>
-                                        <TableCell>
-                                            <Box display="flex" alignItems="center" gap={1}>
-                                                {iconFor(log.description)}
-                                                {log.description}
-                                            </Box>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Chip
-                                                label={log.status}
-                                                color={
-                                                    log.status === "open"
-                                                        ? "error"
-                                                        : "success"
-                                                }
-                                            />
-                                        </TableCell>
-                                        <TableCell>
-                                            {new Date(
-                                                log.created_at
-                                            ).toLocaleString()}
-                                        </TableCell>
+                                        {hwColumns.computer && <TableCell>{log.computer_name}</TableCell>}
+                                        {hwColumns.ip && <TableCell>{log.ip}</TableCell>}
+                                        {hwColumns.description && (
+                                            <TableCell>
+                                                <Box display="flex" alignItems="center" gap={1}>
+                                                    {iconFor(log.description)}
+                                                    {log.description}
+                                                </Box>
+                                            </TableCell>
+                                        )}
+                                        {hwColumns.status && (
+                                            <TableCell>
+                                                <Chip
+                                                    label={log.status}
+                                                    color={
+                                                        log.status === "open"
+                                                            ? "error"
+                                                            : "success"
+                                                    }
+                                                />
+                                            </TableCell>
+                                        )}
+                                        {hwColumns.created && (
+                                            <TableCell>
+                                                {new Date(
+                                                    log.created_at
+                                                ).toLocaleString()}
+                                            </TableCell>
+                                        )}
                                         <TableCell>
                                             {log.status === "open" && (
                                                 <IconButton
