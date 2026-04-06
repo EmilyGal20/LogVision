@@ -21,6 +21,7 @@ from routers.net import router as net_router
 from routers.orgs import router as orgs_router
 from routers.notifications import router as notifications_router
 from routers.ai import router as ai_router
+from routers.tasks import router as tasks_router
 
 
 # Demo file loader helpers
@@ -123,6 +124,7 @@ app.include_router(net_router)
 app.include_router(orgs_router)
 app.include_router(notifications_router)
 app.include_router(ai_router)
+app.include_router(tasks_router)
 
 
 # =========================================================

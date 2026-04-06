@@ -686,7 +686,7 @@
 
 // -----------------------------------------------------------------------------------------------------------------------------------------
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
     Paper,
     Typography,
@@ -697,6 +697,12 @@ import {
     ToggleButton,
     ToggleButtonGroup,
     Alert,
+    Chip,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem,
+    Divider,
 } from "@mui/material";
 
 import usePersistentState from "../hooks/usePersistentState";
@@ -724,6 +730,14 @@ export default function Profile() {
 
     const [loading, setLoading] = useState(false);
     const [msg, setMsg] = useState({ type: "", text: "" });
+    const [tasks, setTasks] = useState([]);
+    const [taskLogs, setTaskLogs] = useState([]);
+    const [adminUsers, setAdminUsers] = useState([]);
+    const [adminOrgs, setAdminOrgs] = useState([]);
+    const [assignLogId, setAssignLogId] = useState("");
+    const [assignType, setAssignType] = useState("user");
+    const [assignValue, setAssignValue] = useState("");
+    const [assignBusy, setAssignBusy] = useState(false);
 
     const resetForm = useCallback(() => {
         setUsername("");
@@ -763,6 +777,29 @@ export default function Profile() {
         if (auth?.user) setUser(auth.user);
         // לא צריך לשים Authorization פה — api.js כבר מטפל בזה
     }, [setUser]);
+
+    const loadTaskData = useCallback(async () => {
+        if (!user) {
+            setTasks([]);
+            setTaskLogs([]);
+            return;
+        }
+        try {
+            const [taskRes, logRes] = await Promise.all([
+                api.get("/tasks"),
+                api.get("/logs"),
+            ]);
+            setTasks(Array.isArray(taskRes.data) ? taskRes.data : []);
+            setTaskLogs(Array.isArray(logRes.data) ? logRes.data : []);
+        } catch {
+            setTasks([]);
+            setTaskLogs([]);
+        }
+    }, [user]);
+
+    useEffect(() => {
+        loadTaskData();
+    }, [loadTaskData]);
 
     // =====================================================
     // 🔐 LOGIN
@@ -852,6 +889,99 @@ export default function Profile() {
     };
 
     const isAdmin = ["admin", "org_admin", "super_admin"].includes(user?.role);
+
+    useEffect(() => {
+        let mounted = true;
+        const loadAdminLists = async () => {
+            if (!isAdmin) {
+                setAdminUsers([]);
+                setAdminOrgs([]);
+                return;
+            }
+            try {
+                const [usersRes, orgsRes] = await Promise.all([
+                    api.get("/users/"),
+                    user?.role === "super_admin" ? api.get("/orgs/") : api.get("/orgs/me"),
+                ]);
+                if (!mounted) return;
+                setAdminUsers(Array.isArray(usersRes.data) ? usersRes.data : []);
+                if (Array.isArray(orgsRes.data)) {
+                    setAdminOrgs(orgsRes.data);
+                } else if (orgsRes.data) {
+                    setAdminOrgs([orgsRes.data]);
+                } else {
+                    setAdminOrgs([]);
+                }
+            } catch {
+                if (mounted) {
+                    setAdminUsers([]);
+                    setAdminOrgs([]);
+                }
+            }
+        };
+        loadAdminLists();
+        return () => {
+            mounted = false;
+        };
+    }, [isAdmin, user?.role]);
+
+    const logsById = useMemo(() => {
+        const map = {};
+        taskLogs.forEach((log) => {
+            map[log.id] = log;
+        });
+        return map;
+    }, [taskLogs]);
+
+    const myTasks = useMemo(() => {
+        if (!user) return [];
+        const orgId = user.org_id;
+        const username = user.username;
+        return tasks.filter((t) => {
+            if (t.assigned_type === "user" && String(t.assigned_user) === String(username)) return true;
+            if (t.assigned_type === "org" && String(t.assigned_org) === String(orgId)) return true;
+            return false;
+        });
+    }, [tasks, user]);
+
+    const taskStats = useMemo(() => {
+        const critical = myTasks.filter((t) => String(t.severity || "").toLowerCase() === "critical").length;
+        const open = myTasks.filter((t) => String(t.status || "").toLowerCase() !== "resolved").length;
+        return { total: myTasks.length, critical, open };
+    }, [myTasks]);
+
+    useEffect(() => {
+        if (!assignLogId && taskLogs.length) {
+            setAssignLogId(String(taskLogs[0].id));
+        }
+    }, [assignLogId, taskLogs]);
+
+    useEffect(() => {
+        if (assignType === "user") {
+            setAssignValue(adminUsers[0]?.username || "");
+        } else if (assignType === "org") {
+            setAssignValue(adminOrgs[0]?.id ? String(adminOrgs[0].id) : "");
+        } else {
+            setAssignValue("");
+        }
+    }, [assignType, adminUsers, adminOrgs]);
+
+    const handleAssignTask = async () => {
+        if (!assignLogId) return;
+        setAssignBusy(true);
+        try {
+            await api.post("/tasks/assign", {
+                log_id: Number(assignLogId),
+                assignee_type: assignType,
+                assignee_value: assignType === "none" ? null : (assignValue || null),
+            });
+            await loadTaskData();
+        } catch {
+            // ignore
+        } finally {
+            setAssignBusy(false);
+        }
+    };
 
     // ✅ Switch account: open clean modal
     const openAuthModal = () => {
@@ -945,6 +1075,178 @@ export default function Profile() {
                     </Paper>
                 )}
             </Box>
+
+            {user && (
+                <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "2fr 1fr" }, gap: 2, mt: 2 }}>
+                    <Paper className="lv-panel">
+                        <Typography variant="h6" sx={{ mb: 1, fontWeight: 800 }}>
+                            My Tasks / Incidents
+                        </Typography>
+                        <Typography sx={{ opacity: 0.7, mb: 2 }}>
+                            Assigned incidents for your organization or user account.
+                        </Typography>
+                        {myTasks.length === 0 && (
+                            <Typography sx={{ opacity: 0.7 }}>
+                                No assigned incidents yet.
+                            </Typography>
+                        )}
+                        {myTasks.slice(0, 8).map((t) => {
+                            const log = logsById[t.log_id] || {};
+                            const slaTone =
+                                t.sla_status === "overdue"
+                                    ? "error"
+                                    : t.sla_status === "due_soon"
+                                        ? "warning"
+                                        : t.sla_status
+                                            ? "success"
+                                            : "default";
+                            return (
+                            <Paper
+                                key={t.id}
+                                sx={{
+                                    p: 1.6,
+                                    mb: 1.2,
+                                    borderRadius: 3,
+                                    border: "1px solid rgba(201,165,95,0.18)",
+                                    background: "rgba(255,255,255,0.04)",
+                                }}
+                            >
+                                <Typography sx={{ fontWeight: 800 }}>
+                                    {log.ip ? `${log.ip} - ${log.error_type || "Incident"}` : `Incident ${t.log_id}`}
+                                </Typography>
+                                <Typography sx={{ opacity: 0.7 }}>
+                                    {String(log.description || "").slice(0, 90) || "No description available."}
+                                </Typography>
+                                {t.due_at && (
+                                    <Typography sx={{ opacity: 0.7, fontSize: 12, mt: 0.5 }}>
+                                        Due: {new Date(t.due_at).toLocaleString()}
+                                    </Typography>
+                                )}
+                                {t.last_reminder_at && (
+                                    <Typography sx={{ opacity: 0.6, fontSize: 12 }}>
+                                        Last reminder: {new Date(t.last_reminder_at).toLocaleString()}
+                                    </Typography>
+                                )}
+                                <Box sx={{ display: "flex", gap: 1, mt: 1, flexWrap: "wrap" }}>
+                                    <Chip label={t.severity} size="small" />
+                                    <Chip label={t.status} size="small" />
+                                    <Chip
+                                        label={`SLA: ${t.sla_status || "not set"}`}
+                                        size="small"
+                                        color={slaTone}
+                                    />
+                                    <Button
+                                        size="small"
+                                        variant="outlined"
+                                        component={Link}
+                                        to={String(t.log_id).startsWith("json-") ? "/logs" : `/issue/${t.log_id}`}
+                                    >
+                                        Open
+                                    </Button>
+                                </Box>
+                            </Paper>
+                            );
+                        })}
+                    </Paper>
+
+                    <Paper className="lv-panel">
+                        <Typography variant="h6" sx={{ mb: 1, fontWeight: 800 }}>
+                            My Workspace
+                        </Typography>
+                        <Typography sx={{ opacity: 0.7, mb: 2 }}>
+                            Key tools to investigate and resolve assigned work.
+                        </Typography>
+                        <Box sx={{ display: "grid", gap: 1.2 }}>
+                            <Paper sx={{ p: 1.6, borderRadius: 3, background: "rgba(255,255,255,0.04)" }}>
+                                <Typography sx={{ fontWeight: 800 }}>Responsibility</Typography>
+                                <Typography sx={{ opacity: 0.7 }}>
+                                    Open: {taskStats.open} | Critical: {taskStats.critical}
+                                </Typography>
+                            </Paper>
+                            <Button variant="outlined" component={Link} to="/logs">Go to Logs</Button>
+                            <Button variant="outlined" component={Link} to="/realtime">Open Realtime</Button>
+                            <Button variant="outlined" component={Link} to="/search">Diagnostics</Button>
+                        </Box>
+                    </Paper>
+                </Box>
+            )}
+
+            {user && isAdmin && (
+                <Paper className="lv-panel" sx={{ mt: 2 }}>
+                    <Typography variant="h6" sx={{ mb: 1, fontWeight: 800 }}>
+                        Admin Task Assignment
+                    </Typography>
+                    <Typography sx={{ opacity: 0.7, mb: 2 }}>
+                        Assign incidents to a specific user or organization.
+                    </Typography>
+                    <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", md: "1.2fr 0.6fr 0.8fr auto" } }}>
+                        <FormControl size="small">
+                            <InputLabel id="assign-log-label">Incident</InputLabel>
+                            <Select
+                                labelId="assign-log-label"
+                                label="Incident"
+                                value={assignLogId}
+                                onChange={(e) => setAssignLogId(e.target.value)}
+                            >
+                                {taskLogs.map((log) => (
+                                    <MenuItem key={log.id} value={String(log.id)}>
+                                        {log.ip ? `${log.ip} - ${log.error_type || "Incident"}` : `Incident ${log.id}`}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+
+                        <FormControl size="small">
+                            <InputLabel id="assign-type-label">Assignee</InputLabel>
+                            <Select
+                                labelId="assign-type-label"
+                                label="Assignee"
+                                value={assignType}
+                                onChange={(e) => setAssignType(e.target.value)}
+                            >
+                                <MenuItem value="user">User</MenuItem>
+                                <MenuItem value="org">Organization</MenuItem>
+                                <MenuItem value="none">None</MenuItem>
+                            </Select>
+                        </FormControl>
+
+                        <FormControl size="small" disabled={assignType === "none"}>
+                            <InputLabel id="assign-value-label">
+                                {assignType === "org" ? "Organization" : "User"}
+                            </InputLabel>
+                            <Select
+                                labelId="assign-value-label"
+                                label={assignType === "org" ? "Organization" : "User"}
+                                value={assignValue}
+                                onChange={(e) => setAssignValue(e.target.value)}
+                            >
+                                {assignType === "org" && adminOrgs.map((org) => (
+                                    <MenuItem key={org.id} value={String(org.id)}>
+                                        {org.name} (ID {org.id})
+                                    </MenuItem>
+                                ))}
+                                {assignType === "user" && adminUsers.map((u) => (
+                                    <MenuItem key={u.id} value={u.username}>
+                                        {u.username}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+
+                        <Button
+                            variant="contained"
+                            disabled={!assignLogId || assignBusy}
+                            onClick={handleAssignTask}
+                        >
+                            {assignBusy ? "Assigning..." : "Assign"}
+                        </Button>
+                    </Box>
+                    <Divider sx={{ opacity: 0.2, my: 2 }} />
+                    <Typography sx={{ opacity: 0.7 }}>
+                        Assignments trigger task notifications and SLA tracking automatically.
+                    </Typography>
+                </Paper>
+            )}
 
             {/* 🔐 LOGIN/REGISTER MODAL */}
             <Modal open={open} onClose={handleClose}>

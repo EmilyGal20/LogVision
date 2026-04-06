@@ -675,7 +675,7 @@ export default function Logs() {
                         <TextField
                             select
                             label="Columns"
-                            value="custom"
+                            value=""
                             fullWidth
                             SelectProps={{ renderValue: () => "Customize" }}
                         >

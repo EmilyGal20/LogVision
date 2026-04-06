@@ -110,6 +110,29 @@ class Alert(Base):
 
 
 # ============================================================
+# TASK ASSIGNMENTS TABLE
+# ============================================================
+class TaskAssignment(Base):
+    __tablename__ = "incident_tasks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    log_id = Column(Integer, ForeignKey("logs.id"), index=True)
+    org_id = Column(Integer, ForeignKey("organizations.id"), default=1)
+
+    assigned_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    assigned_org_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
+    status = Column(String, default="open")
+    severity = Column(String, default="Low")
+
+    sla_hours = Column(Integer, default=24)
+    due_at = Column(DateTime, nullable=True)
+    last_reminder_at = Column(DateTime, nullable=True)
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+# ============================================================
 # NOTIFICATIONS TABLE
 # ============================================================
 class Notification(Base):

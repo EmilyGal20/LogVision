@@ -83,6 +83,9 @@ def update_user(user_id: int, data: UserUpdate, db: Session = Depends(get_db), c
     if not user:
         raise HTTPException(404, "User not found")
 
+    if current.role != "super_admin" and user.org_id != current.org_id:
+        raise HTTPException(403, "Cross-org update forbidden")
+
     if user.id == 1 and data.role and data.role != "admin":
         raise HTTPException(403, "Cannot change role of main admin")
 
@@ -109,6 +112,9 @@ def delete_user(user_id: int, db: Session = Depends(get_db), current=Depends(req
     if not user:
         raise HTTPException(404, "User not found")
 
+    if current.role != "super_admin" and user.org_id != current.org_id:
+        raise HTTPException(403, "Cross-org delete forbidden")
+
     if user.id == 1:
         raise HTTPException(403, "Cannot delete main admin account")
 
@@ -116,7 +122,3 @@ def delete_user(user_id: int, db: Session = Depends(get_db), current=Depends(req
     db.commit()
 
     return {"message": "User deleted successfully"}
-    if current.role != "super_admin" and user.org_id != current.org_id:
-        raise HTTPException(403, "Cross-org update forbidden")
-    if current.role != "super_admin" and user.org_id != current.org_id:
-        raise HTTPException(403, "Cross-org delete forbidden")

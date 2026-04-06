@@ -38,6 +38,25 @@ def ensure_org_schema():
         "notifications",
     ]
 
+    # incident tasks table
+    if not _table_exists(cur, "incident_tasks"):
+        cur.execute(
+            "CREATE TABLE incident_tasks ("
+            "id INTEGER PRIMARY KEY, "
+            "log_id INTEGER, "
+            "org_id INTEGER DEFAULT 1, "
+            "assigned_user_id INTEGER, "
+            "assigned_org_id INTEGER, "
+            "status TEXT, "
+            "severity TEXT, "
+            "sla_hours INTEGER, "
+            "due_at DATETIME, "
+            "last_reminder_at DATETIME, "
+            "created_at DATETIME, "
+            "updated_at DATETIME"
+            ")"
+        )
+
     for table in targets:
         if _table_exists(cur, table) and not _column_exists(cur, table, "org_id"):
             cur.execute(f"ALTER TABLE {table} ADD COLUMN org_id INTEGER DEFAULT 1")

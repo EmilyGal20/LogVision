@@ -238,3 +238,35 @@ class NotificationCreate(BaseModel):
     message: str
     user_id: Optional[int] = None
     org_id: Optional[int] = None
+
+
+# ============================================================
+# TASK ASSIGNMENTS
+# ============================================================
+
+
+class TaskAssignCreate(BaseModel):
+    log_id: int
+    assignee_type: str  # user | org | none
+    assignee_value: Optional[str] = None  # username or org_id
+
+
+class TaskOut(BaseModel):
+    id: int
+    log_id: int
+    org_id: int
+    assigned_type: Optional[str] = None
+    assigned_user: Optional[str] = None
+    assigned_org: Optional[int] = None
+    assigned_value: Optional[str] = None
+    status: str
+    severity: str
+    sla_hours: int
+    due_at: Optional[datetime] = None
+    sla_status: Optional[str] = None
+    last_reminder_at: Optional[datetime] = None
+    sla_status: Optional[str] = None
+    last_reminder_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True

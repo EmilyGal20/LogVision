@@ -185,7 +185,7 @@ export default function Layout() {
             const auth = getAuth();
             if (!auth?.token) return;
             try {
-                const res = await api.get("/notifications?unread_only=true&limit=20");
+                const res = await api.get("/notifications/?unread_only=true&limit=20");
                 if (mounted) setNotifications(Array.isArray(res.data) ? res.data : []);
             } catch {
                 if (mounted) setNotifications([]);

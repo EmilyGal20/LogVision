@@ -390,8 +390,6 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import {
     Box,
     Paper,
-    Tabs,
-    Tab,
     Typography,
     Button,
     Chip,
@@ -464,25 +462,29 @@ export default function AdminPanel() {
     const text = dark ? "#e5e7eb" : "#111";
     const card = dark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)";
 
-    const [tab, setTab] = useState(0);
     const [users, setUsers] = useState([]);
     const [devices, setDevices] = useState([]);
     const [logs, setLogs] = useState([]);
     const [alerts, setAlerts] = useState([]);
+    const [tasks, setTasks] = useState([]);
+    const [assignmentDrafts, setAssignmentDrafts] = useState({});
     const [orgs, setOrgs] = useState([]);
-    const [selectedOrgId, setSelectedOrgId] = useState("all");
+    const [selectedOrgId, setSelectedOrgId] = useState("");
     const [adminSearch, setAdminSearch] = useState("");
     const [severityFilter, setSeverityFilter] = useState("all");
     const [statusFilter, setStatusFilter] = useState("all");
     const [deviceStatusFilter, setDeviceStatusFilter] = useState("all");
+    const [deviceFilter, setDeviceFilter] = useState("all");
+    const [userFilter, setUserFilter] = useState("all");
+    const [categoryFilter, setCategoryFilter] = useState("all");
+    const [assignmentFilter, setAssignmentFilter] = useState("all");
     const [aiOrgSummary, setAiOrgSummary] = useState(null);
     const [aiLoading, setAiLoading] = useState(false);
 
     const auth = getAuth();
     const role = auth?.user?.role || "user";
     const isSuperAdmin = role === "super_admin";
-    const [alertRules, setAlertRules] = usePersistentState("alert-rules", defaultRules());
-    const [incidentOwners, setIncidentOwners] = usePersistentState("admin-incident-owners", {});
+    const [alertRules] = usePersistentState("alert-rules", defaultRules());
 
     // ---------- Users modal ----------
     const [openUserModal, setOpenUserModal] = useState(false);
@@ -512,12 +514,13 @@ export default function AdminPanel() {
             const orgParam = isSuperAdmin && scopeOrgId !== "all" ? { org_id: scopeOrgId } : undefined;
 
             const orgReq = isSuperAdmin ? api.get("/orgs/") : api.get("/orgs/me");
-            const [orgRes, u, d, l, a] = await Promise.all([
+            const [orgRes, u, d, l, a, t] = await Promise.all([
                 orgReq,
                 api.get("/users/", { params: orgParam || undefined }),
                 api.get("/devices/", { params: orgParam || undefined }),
                 api.get("/logs", { params: orgParam || undefined }),
                 api.get("/alerts/", { params: orgParam || undefined }),
+                api.get("/tasks", { params: orgParam || undefined }),
             ]);
 
             setOrgs(Array.isArray(orgRes.data) ? orgRes.data : [orgRes.data]);
@@ -525,6 +528,7 @@ export default function AdminPanel() {
             setDevices(d.data || []);
             setLogs(l.data || []);
             setAlerts(a.data || []);
+            setTasks(t.data || []);
         } catch {
             navigate("/profile");
         }
@@ -532,9 +536,13 @@ export default function AdminPanel() {
 
     useEffect(() => {
         if (!isSuperAdmin && auth?.user?.org_id) {
-            setSelectedOrgId(auth.user.org_id);
+            setSelectedOrgId(String(auth.user.org_id));
+            return;
         }
-    }, [isSuperAdmin, auth?.user?.org_id]);
+        if (isSuperAdmin && !selectedOrgId) {
+            setSelectedOrgId("all");
+        }
+    }, [isSuperAdmin, auth?.user?.org_id, selectedOrgId]);
 
     useEffect(() => {
         loadAdmin();
@@ -543,6 +551,26 @@ export default function AdminPanel() {
     useEffect(() => {
         setAiOrgSummary(null);
     }, [selectedOrgId]);
+
+    useEffect(() => {
+        if (!["admin", "org_admin", "super_admin"].includes(role)) return;
+        let mounted = true;
+        const runReminders = async () => {
+            try {
+                const params = isSuperAdmin && selectedOrgId !== "all" ? { org_id: selectedOrgId } : undefined;
+                await api.post("/tasks/reminders", null, { params });
+            } catch {
+                // ignore
+            }
+        };
+        runReminders();
+        const id = setInterval(runReminders, 300000);
+        return () => {
+            mounted = false;
+            clearInterval(id);
+        };
+    }, [role, isSuperAdmin, selectedOrgId]);
+
 
     const cpuChart = useMemo(() => {
         return {
@@ -586,6 +614,7 @@ export default function AdminPanel() {
 
     const filteredUsers = useMemo(() => {
         return users.filter((u) => {
+            if (userFilter !== "all" && String(u.username) !== String(userFilter)) return false;
             if (!searchValue) return true;
             return (
                 String(u.username || "").toLowerCase().includes(searchValue) ||
@@ -593,23 +622,25 @@ export default function AdminPanel() {
                 String(u.email || "").toLowerCase().includes(searchValue)
             );
         });
-    }, [users, searchValue]);
+    }, [users, searchValue, userFilter]);
 
     const filteredDevices = useMemo(() => {
         return devices.filter((d) => {
             if (deviceStatusFilter === "online" && d.online !== true) return false;
             if (deviceStatusFilter === "offline" && d.online !== false) return false;
+            if (deviceFilter !== "all" && String(d.ip) !== String(deviceFilter)) return false;
             if (!searchValue) return true;
             return (
                 String(d.ip || "").toLowerCase().includes(searchValue) ||
                 String(d.hostname || "").toLowerCase().includes(searchValue)
             );
         });
-    }, [devices, deviceStatusFilter, searchValue]);
+    }, [devices, deviceStatusFilter, searchValue, deviceFilter]);
 
     const filteredAlerts = useMemo(() => {
         return alerts.filter((a) => {
             if (severityFilter !== "all" && String(a.severity || "").toLowerCase() !== severityFilter) return false;
+            if (deviceFilter !== "all" && String(a.device_ip || "") !== deviceFilter) return false;
             if (!searchValue) return true;
             return (
                 String(a.message || "").toLowerCase().includes(searchValue) ||
@@ -617,12 +648,22 @@ export default function AdminPanel() {
                 String(a.type || "").toLowerCase().includes(searchValue)
             );
         });
-    }, [alerts, severityFilter, searchValue]);
+    }, [alerts, severityFilter, searchValue, deviceFilter]);
 
     const filteredLogs = useMemo(() => {
         return logs.filter((l) => {
             if (severityFilter !== "all" && String(l.severity || "").toLowerCase() !== severityFilter) return false;
             if (statusFilter !== "all" && String(l.status || "").toLowerCase() !== statusFilter) return false;
+            if (deviceFilter !== "all" && String(l.ip || "") !== deviceFilter) return false;
+            if (categoryFilter !== "all" && String(l.error_type || "").toLowerCase() !== categoryFilter) return false;
+
+            const assignment = taskByLogId[l.id];
+            if (assignmentFilter === "unassigned" && assignment?.assigned_type) return false;
+            if (userFilter !== "all") {
+                if (!assignment || assignment.assigned_type !== "user" || String(assignment.assigned_user) !== String(userFilter)) {
+                    return false;
+                }
+            }
             if (!searchValue) return true;
             return (
                 String(l.ip || "").toLowerCase().includes(searchValue) ||
@@ -630,7 +671,25 @@ export default function AdminPanel() {
                 String(l.error_type || "").toLowerCase().includes(searchValue)
             );
         });
-    }, [logs, severityFilter, statusFilter, searchValue]);
+    }, [
+        logs,
+        severityFilter,
+        statusFilter,
+        searchValue,
+        deviceFilter,
+        categoryFilter,
+        userFilter,
+        assignmentFilter,
+        taskByLogId,
+    ]);
+
+    const taskByLogId = useMemo(() => {
+        const map = {};
+        tasks.forEach((t) => {
+            map[t.log_id] = t;
+        });
+        return map;
+    }, [tasks]);
 
     const openIncidents = useMemo(
         () => logs.filter((l) => String(l.status || "").toLowerCase() !== "resolved").length,
@@ -649,6 +708,60 @@ export default function AdminPanel() {
         [devices]
     );
 
+    const slaStats = useMemo(() => {
+        const overdue = tasks.filter((t) => t.sla_status === "overdue").length;
+        const dueSoon = tasks.filter((t) => t.sla_status === "due_soon").length;
+        return { overdue, dueSoon };
+    }, [tasks]);
+
+    const orgNameById = useMemo(() => {
+        const map = {};
+        orgs.forEach((o) => {
+            map[o.id] = o.name;
+        });
+        return map;
+    }, [orgs]);
+
+    const orgLabel = (orgId) => {
+        if (orgId === "unknown") return "Unknown Org";
+        const idNum = Number(orgId);
+        return orgNameById[idNum] ? `${orgNameById[idNum]} (ID ${idNum})` : `Org ${orgId}`;
+    };
+
+    const buildGroups = useCallback((items) => {
+        if (!isSuperAdmin || selectedOrgId !== "all") {
+            const key = String(selectedOrgId !== "all" ? selectedOrgId : (auth?.user?.org_id || "current"));
+            return { [key]: items };
+        }
+        const groups = {};
+        items.forEach((item) => {
+            const key = item?.org_id ? String(item.org_id) : "unknown";
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(item);
+        });
+        return groups;
+    }, [isSuperAdmin, selectedOrgId, auth?.user?.org_id]);
+
+    const incidentGroups = useMemo(
+        () => buildGroups(filteredLogs),
+        [filteredLogs, buildGroups]
+    );
+
+    const deviceGroups = useMemo(
+        () => buildGroups(filteredDevices),
+        [filteredDevices, buildGroups]
+    );
+
+    const userGroups = useMemo(
+        () => buildGroups(filteredUsers),
+        [filteredUsers, buildGroups]
+    );
+
+    const alertGroups = useMemo(
+        () => buildGroups(filteredAlerts),
+        [filteredAlerts, buildGroups]
+    );
+
     const aiAdminSummary = useMemo(() => {
         const total = devices.length;
         const offline = deviceInsights.offline;
@@ -662,7 +775,7 @@ export default function AdminPanel() {
     }, [devices.length, deviceInsights]);
 
     const adminAlerts = useMemo(() => buildAlerts({ logs: [], devices, rules: alertRules }), [devices, alertRules]);
-    const recentActivity = useMemo(() => readActivity().slice(0, 6), [devices]);
+    const recentActivity = useMemo(() => readActivity().slice(0, 6), []);
 
     useEffect(() => {
         saveAlerts(adminAlerts);
@@ -678,6 +791,30 @@ export default function AdminPanel() {
             setAiOrgSummary(null);
         } finally {
             setAiLoading(false);
+        }
+    };
+
+    const assignTask = async (logId, type, value) => {
+        try {
+            const payload = {
+                log_id: logId,
+                assignee_type: type,
+                assignee_value: value || null,
+            };
+            const res = await api.post("/tasks/assign", payload);
+            const updated = res.data;
+            setTasks((prev) => {
+                const next = prev.filter((t) => t.log_id !== updated.log_id);
+                return [updated, ...next];
+            });
+            setAssignmentDrafts((prev) => {
+                const next = { ...prev };
+                delete next[logId];
+                return next;
+            });
+            openSnack("success", "Assignment updated");
+        } catch {
+            openSnack("error", "Failed to update assignment");
         }
     };
 
@@ -949,16 +1086,22 @@ export default function AdminPanel() {
                 </Typography>
             </Box>
 
+            {/* ORG HEADER */}
             <Paper className="lv-panel" sx={{ background: card, p: 2.2, mb: 2 }}>
-                <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "1.4fr 2fr" } }}>
-                    <Box sx={{ display: "grid", gap: 1.2 }}>
-                        <Typography sx={{ fontWeight: 800, color: text }}>Organization Scope</Typography>
+                <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "1.2fr 2fr" } }}>
+                    <Box sx={{ display: "grid", gap: 1 }}>
+                        <Typography sx={{ fontWeight: 900, color: text, fontSize: 18 }}>
+                            Organization Context
+                        </Typography>
+                        <Typography sx={{ opacity: 0.7, color: text, fontSize: 12 }}>
+                            Active scope for incidents, devices, users, and alerts.
+                        </Typography>
                         <FormControl size="small">
                             <InputLabel id="org-scope-label">Organization</InputLabel>
                             <Select
                                 labelId="org-scope-label"
                                 label="Organization"
-                                value={isSuperAdmin ? selectedOrgId : auth?.user?.org_id || selectedOrgId}
+                                value={isSuperAdmin ? (selectedOrgId || "all") : ""}
                                 onChange={(e) => {
                                     const value = e.target.value;
                                     setSelectedOrgId(value);
@@ -966,356 +1109,194 @@ export default function AdminPanel() {
                                 }}
                                 disabled={!isSuperAdmin}
                             >
+                                {!isSuperAdmin && <MenuItem value="">Current Org</MenuItem>}
                                 {isSuperAdmin && <MenuItem value="all">All Organizations</MenuItem>}
                                 {orgs.map((o) => (
-                                    <MenuItem key={o.id} value={o.id}>
+                                    <MenuItem key={o.id} value={String(o.id)}>
                                         {o.name} (ID {o.id})
                                     </MenuItem>
                                 ))}
                             </Select>
                         </FormControl>
-                        <Typography sx={{ opacity: 0.7, fontSize: 12, color: text }}>
-                            {selectedOrg ? `Selected: ${selectedOrg.name}` : "Showing current organization scope."}
-                        </Typography>
                     </Box>
-                    <Box sx={{ display: "grid", gap: 1.2 }}>
-                        <Typography sx={{ fontWeight: 800, color: text }}>Search & Filters</Typography>
-                        <TextField
-                            value={adminSearch}
-                            onChange={(e) => setAdminSearch(e.target.value)}
-                            placeholder="Search users, devices, incidents, alerts..."
-                            size="small"
-                            fullWidth
-                        />
-                        <Stack direction="row" spacing={1} flexWrap="wrap">
-                            <FormControl size="small" sx={{ minWidth: 140 }}>
-                                <InputLabel id="severity-filter-label">Severity</InputLabel>
-                                <Select
-                                    labelId="severity-filter-label"
-                                    label="Severity"
-                                    value={severityFilter}
-                                    onChange={(e) => setSeverityFilter(e.target.value)}
-                                >
-                                    <MenuItem value="all">All</MenuItem>
-                                    <MenuItem value="critical">Critical</MenuItem>
-                                    <MenuItem value="high">High</MenuItem>
-                                    <MenuItem value="medium">Medium</MenuItem>
-                                    <MenuItem value="low">Low</MenuItem>
-                                </Select>
-                            </FormControl>
-                            <FormControl size="small" sx={{ minWidth: 140 }}>
-                                <InputLabel id="status-filter-label">Status</InputLabel>
-                                <Select
-                                    labelId="status-filter-label"
-                                    label="Status"
-                                    value={statusFilter}
-                                    onChange={(e) => setStatusFilter(e.target.value)}
-                                >
-                                    <MenuItem value="all">All</MenuItem>
-                                    <MenuItem value="open">Open</MenuItem>
-                                    <MenuItem value="resolved">Resolved</MenuItem>
-                                    <MenuItem value="ignored">Ignored</MenuItem>
-                                </Select>
-                            </FormControl>
-                            <FormControl size="small" sx={{ minWidth: 160 }}>
-                                <InputLabel id="device-filter-label">Device Status</InputLabel>
-                                <Select
-                                    labelId="device-filter-label"
-                                    label="Device Status"
-                                    value={deviceStatusFilter}
-                                    onChange={(e) => setDeviceStatusFilter(e.target.value)}
-                                >
-                                    <MenuItem value="all">All</MenuItem>
-                                    <MenuItem value="online">Online</MenuItem>
-                                    <MenuItem value="offline">Offline</MenuItem>
-                                </Select>
-                            </FormControl>
-                        </Stack>
+                    <Box sx={{ display: "grid", gap: 1, gridTemplateColumns: { xs: "1fr", md: "repeat(3, 1fr)" } }}>
+                        <Paper sx={{ p: 2, borderRadius: 3, background: "rgba(255,255,255,0.04)" }}>
+                            <Typography sx={{ opacity: 0.7 }}>Org</Typography>
+                            <Typography sx={{ fontWeight: 800 }}>
+                                {isSuperAdmin && selectedOrgId === "all" ? "All Orgs" : (selectedOrg?.name || "Current Org")}
+                            </Typography>
+                        </Paper>
+                        <Paper sx={{ p: 2, borderRadius: 3, background: "rgba(255,255,255,0.04)" }}>
+                            <Typography sx={{ opacity: 0.7 }}>Users</Typography>
+                            <Typography sx={{ fontWeight: 800 }}>{users.length}</Typography>
+                        </Paper>
+                        <Paper sx={{ p: 2, borderRadius: 3, background: "rgba(255,255,255,0.04)" }}>
+                            <Typography sx={{ opacity: 0.7 }}>Devices</Typography>
+                            <Typography sx={{ fontWeight: 800 }}>{devices.length}</Typography>
+                        </Paper>
                     </Box>
                 </Box>
             </Paper>
 
-            <Box
-                sx={{
-                    display: "grid",
-                    gridTemplateColumns: { xs: "1fr", lg: "220px 1fr" },
-                    gap: 2,
-                }}
-            >
-                <Paper className="lv-panel" sx={{ background: card, padding: 1 }}>
-                    <Tabs
-                        value={tab}
-                        onChange={(e, v) => setTab(v)}
-                        orientation="vertical"
-                        textColor="secondary"
-                        indicatorColor="secondary"
-                        sx={{ minHeight: 320 }}
-                    >
-                        <Tab label="Overview" />
-                        <Tab label="Organizations" />
-                        <Tab label="Incidents" />
-                        <Tab label="Devices" />
-                        <Tab label="Users" />
-                        <Tab label="Alerts" />
-                        <Tab label="Settings" />
-                    </Tabs>
+            {/* SUMMARY CARDS */}
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(6, 1fr)" }, gap: 2, mb: 2 }}>
+                <Paper sx={{ p: 2, borderRadius: 4, background: card }}>
+                    <Typography sx={{ opacity: 0.7 }}>Open Incidents</Typography>
+                    <Typography sx={{ fontSize: 22, fontWeight: 800 }}>{openIncidents}</Typography>
                 </Paper>
+                <Paper sx={{ p: 2, borderRadius: 4, background: card }}>
+                    <Typography sx={{ opacity: 0.7 }}>Critical Issues</Typography>
+                    <Typography sx={{ fontSize: 22, fontWeight: 800, color: "#fb7185" }}>{criticalIncidents}</Typography>
+                </Paper>
+                <Paper sx={{ p: 2, borderRadius: 4, background: card }}>
+                    <Typography sx={{ opacity: 0.7 }}>Active Alerts</Typography>
+                    <Typography sx={{ fontSize: 22, fontWeight: 800, color: "#f97316" }}>{unackedAlerts}</Typography>
+                </Paper>
+                <Paper sx={{ p: 2, borderRadius: 4, background: card }}>
+                    <Typography sx={{ opacity: 0.7 }}>Devices Online</Typography>
+                    <Typography sx={{ fontSize: 22, fontWeight: 800 }}>{onlineDevices}/{devices.length}</Typography>
+                </Paper>
+                <Paper sx={{ p: 2, borderRadius: 4, background: card }}>
+                    <Typography sx={{ opacity: 0.7 }}>Users</Typography>
+                    <Typography sx={{ fontSize: 22, fontWeight: 800 }}>{users.length}</Typography>
+                </Paper>
+                <Paper sx={{ p: 2, borderRadius: 4, background: card }}>
+                    <Typography sx={{ opacity: 0.7 }}>Risk Signal</Typography>
+                    <Typography sx={{ fontSize: 22, fontWeight: 800 }}>
+                        {deviceInsights.offline + criticalIncidents}
+                    </Typography>
+                </Paper>
+            </Box>
 
-                <Box className="lv-deck">
-
-            {tab === 0 && (
-                <Box>
-                    <Box display="grid" gridTemplateColumns="repeat(3, 1fr)" gap={3} mb={3}>
-                        <Paper sx={{ p: 3, borderRadius: 4, background: card, backdropFilter: "blur(6px)", border: "1px solid rgba(201,165,95,0.16)" }}>
-                            <Typography sx={{ color: text, mb: 2, fontWeight: 600 }}>
-                                Organization Scope
-                            </Typography>
-                            <Typography sx={{ fontSize: 22, color: "#a78bfa", fontWeight: 800 }}>
-                                {isSuperAdmin && selectedOrgId === "all"
-                                    ? "All Organizations"
-                                    : (selectedOrg?.name || "Current Org")}
-                            </Typography>
-                            <Typography sx={{ opacity: 0.7, color: text, fontSize: 12 }}>
-                                Users: {users.length} â€¢ Devices: {devices.length}
-                            </Typography>
-                        </Paper>
-
-                        <Paper sx={{ p: 3, borderRadius: 4, background: card, border: "1px solid rgba(201,165,95,0.16)" }}>
-                            <Typography sx={{ color: text, mb: 2, fontWeight: 600 }}>
-                                Incident Load
-                            </Typography>
-                            <Typography sx={{ fontSize: 32, color: "#fb7185", fontWeight: 700 }}>
-                                {openIncidents}
-                            </Typography>
-                            <Typography sx={{ opacity: 0.7, color: text, fontSize: 12 }}>
-                                Critical: {criticalIncidents}
-                            </Typography>
-                        </Paper>
-
-                        <Paper sx={{ p: 3, borderRadius: 4, background: card, border: "1px solid rgba(201,165,95,0.16)" }}>
-                            <Typography sx={{ color: text, mb: 2, fontWeight: 600 }}>
-                                Alert Queue
-                            </Typography>
-                            <Typography sx={{ fontSize: 32, color: "#f97316", fontWeight: 700 }}>
-                                {unackedAlerts}
-                            </Typography>
-                            <Typography sx={{ opacity: 0.7, color: text, fontSize: 12 }}>
-                                Total alerts: {alerts.length}
-                            </Typography>
-                        </Paper>
-                    </Box>
-
-                    <Paper sx={{ p: 3, borderRadius: 4, background: card, mb: 3, border: "1px solid rgba(201,165,95,0.16)" }}>
-                        <Typography sx={{ color: text, mb: 2, fontWeight: 600 }}>
-                            CPU Temperature Overview
-                        </Typography>
-                        <Bar data={cpuChart} />
-                    </Paper>
-
-                    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2, mb: 3 }}>
-                        <Paper sx={{ p: 3, borderRadius: 4, background: card, border: "1px solid rgba(201,165,95,0.16)" }}>
-                            <Typography sx={{ color: text, mb: 2, fontWeight: 700 }}>
-                                AI Ops Summary
-                            </Typography>
-                            {aiOrgSummary ? (
-                                <Box sx={{ display: "grid", gap: 0.6 }}>
-                                    <Typography sx={{ fontWeight: 800 }}>{aiOrgSummary.summary}</Typography>
-                                    {(aiOrgSummary.risks || []).slice(0, 3).map((r, idx) => (
-                                        <Typography key={idx} sx={{ opacity: 0.75 }}>â€¢ {r}</Typography>
-                                    ))}
-                                    {(aiOrgSummary.recommendations || []).slice(0, 2).map((r, idx) => (
-                                        <Typography key={`rec-${idx}`} sx={{ opacity: 0.75 }}>â†’ {r}</Typography>
-                                    ))}
-                                    {(aiOrgSummary.root_causes || []).slice(0, 2).map((r, idx) => (
-                                        <Typography key={`root-${idx}`} sx={{ opacity: 0.7 }}>Possible: {r}</Typography>
-                                    ))}
-                                </Box>
-                            ) : (
-                                <Box sx={{ display: "grid", gap: 0.6 }}>
-                                    <Typography sx={{ fontWeight: 800, mb: 0.5 }}>{aiAdminSummary.headline}</Typography>
-                                    {aiAdminSummary.reasons.map((r, idx) => (
-                                        <Typography key={idx} sx={{ opacity: 0.75 }}>{r}</Typography>
-                                    ))}
-                                </Box>
-                            )}
-                            <Button
-                                variant="outlined"
-                                size="small"
-                                sx={{ mt: 1 }}
-                                onClick={runAiOrgSummary}
-                                disabled={aiLoading}
-                            >
-                                {aiLoading ? "Analyzing..." : "Generate AI Summary"}
-                            </Button>
-                        </Paper>
-
-                        <Paper sx={{ p: 3, borderRadius: 4, background: card, border: "1px solid rgba(201,165,95,0.16)" }}>
-                            <Typography sx={{ color: text, mb: 2, fontWeight: 700 }}>
-                                Device Insights
-                            </Typography>
-                            <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                                <Chip label={`Offline: ${deviceInsights.offline}`} color="error" />
-                                <Chip label={`Hot CPU: ${deviceInsights.hotCpu}`} color="warning" />
-                                <Chip label={`Hot GPU: ${deviceInsights.hotGpu}`} color="warning" />
-                                <Chip label={`High RAM: ${deviceInsights.highRam}`} color="warning" />
-                            </Box>
-                        </Paper>
-
-                        <Paper sx={{ p: 3, borderRadius: 4, background: card, border: "1px solid rgba(201,165,95,0.16)" }}>
-                            <Typography sx={{ color: text, mb: 2, fontWeight: 700 }}>
-                                Quick Actions
-                            </Typography>
-                            <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                                <Button variant="outlined" onClick={() => loadAdmin()}>Refresh Data</Button>
-                                <Button variant="outlined" onClick={() => navigate("/hardware")}>Hardware Logs</Button>
-                                <Button variant="outlined" onClick={() => navigate("/logs")}>Incident Logs</Button>
-                                <Button variant="outlined" onClick={() => navigate("/search")}>Diagnostics</Button>
-                            </Box>
-                        </Paper>
-                    </Box>
-
-                    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2, mb: 3 }}>
-                        <Paper sx={{ p: 3, borderRadius: 4, background: card, border: "1px solid rgba(201,165,95,0.16)" }}>
-                            <Typography sx={{ color: text, mb: 2, fontWeight: 700 }}>
-                                Alerts Overview
-                            </Typography>
-                            <Box sx={{ display: "grid", gap: 1 }}>
-                                {alerts.length === 0 && (
-                                    <Typography sx={{ opacity: 0.7, color: text }}>No active alerts.</Typography>
-                                )}
-                                {alerts.slice(0, 5).map((a) => (
-                                    <Box key={a.id}>
-                                        <Typography sx={{ fontWeight: 800, color: text }}>
-                                            [{a.severity}] {a.type}
-                                        </Typography>
-                                        <Typography sx={{ opacity: 0.7, color: text }}>{a.message}</Typography>
-                                        <Button variant="outlined" size="small" sx={{ mt: 0.5 }} onClick={() => navigate("/logs")}>
-                                            Investigate
-                                        </Button>
-                                    </Box>
-                                ))}
-                            </Box>
-                        </Paper>
-
-                        <Paper sx={{ p: 3, borderRadius: 4, background: card, border: "1px solid rgba(201,165,95,0.16)" }}>
-                            <Typography sx={{ color: text, mb: 2, fontWeight: 700 }}>
-                                Recent Activity
-                            </Typography>
-                            <Box sx={{ display: "grid", gap: 1 }}>
-                                {recentActivity.length === 0 && (
-                                    <Typography sx={{ opacity: 0.7, color: text }}>No recent activity.</Typography>
-                                )}
-                                {recentActivity.map((item) => (
-                                    <Box key={item.id} sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
-                                        <Typography sx={{ color: text, fontWeight: 700 }}>{item.label}</Typography>
-                                        <Typography sx={{ opacity: 0.7, color: text, fontSize: 12 }}>
-                                            {new Date(item.ts).toLocaleString()}
-                                        </Typography>
-                                    </Box>
-                                ))}
-                            </Box>
-                        </Paper>
-                    </Box>
-
-                    <Paper sx={{ p: 3, borderRadius: 4, background: card, mb: 3, border: "1px solid rgba(201,165,95,0.16)" }}>
-                        <Typography sx={{ color: text, mb: 2, fontWeight: 700 }}>
-                            User Roles
-                        </Typography>
-                        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                            {Object.entries(roleCounts).map(([role, count]) => (
-                                <Chip key={role} label={`${role}: ${count}`} />
+            {/* FILTERS / SEARCH */}
+            <Paper className="lv-panel" sx={{ background: card, p: 2.2, mb: 2 }}>
+                <Typography sx={{ fontWeight: 800, color: text, mb: 1 }}>Search & Filters</Typography>
+                <Box sx={{ display: "grid", gap: 1.2, gridTemplateColumns: { xs: "1fr", md: "1.6fr 1fr 1fr" } }}>
+                    <TextField
+                        value={adminSearch}
+                        onChange={(e) => setAdminSearch(e.target.value)}
+                        placeholder="Search users, devices, incidents, alerts..."
+                        size="small"
+                        fullWidth
+                    />
+                    <FormControl size="small">
+                        <InputLabel id="severity-filter-label">Severity</InputLabel>
+                        <Select
+                            labelId="severity-filter-label"
+                            label="Severity"
+                            value={severityFilter}
+                            onChange={(e) => setSeverityFilter(e.target.value)}
+                        >
+                            <MenuItem value="all">All</MenuItem>
+                            <MenuItem value="critical">Critical</MenuItem>
+                            <MenuItem value="high">High</MenuItem>
+                            <MenuItem value="medium">Medium</MenuItem>
+                            <MenuItem value="low">Low</MenuItem>
+                        </Select>
+                    </FormControl>
+                    <FormControl size="small">
+                        <InputLabel id="status-filter-label">Status</InputLabel>
+                        <Select
+                            labelId="status-filter-label"
+                            label="Status"
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                        >
+                            <MenuItem value="all">All</MenuItem>
+                            <MenuItem value="open">Open</MenuItem>
+                            <MenuItem value="resolved">Resolved</MenuItem>
+                            <MenuItem value="ignored">Ignored</MenuItem>
+                        </Select>
+                    </FormControl>
+                </Box>
+                <Box sx={{ display: "grid", gap: 1.2, gridTemplateColumns: { xs: "1fr", md: "repeat(4, 1fr)" }, mt: 1.5 }}>
+                    <FormControl size="small">
+                        <InputLabel id="device-filter-label">Device Status</InputLabel>
+                        <Select
+                            labelId="device-filter-label"
+                            label="Device Status"
+                            value={deviceStatusFilter}
+                            onChange={(e) => setDeviceStatusFilter(e.target.value)}
+                        >
+                            <MenuItem value="all">All</MenuItem>
+                            <MenuItem value="online">Online</MenuItem>
+                            <MenuItem value="offline">Offline</MenuItem>
+                        </Select>
+                    </FormControl>
+                    <FormControl size="small">
+                        <InputLabel id="device-ip-filter">Device</InputLabel>
+                        <Select
+                            labelId="device-ip-filter"
+                            label="Device"
+                            value={deviceFilter}
+                            onChange={(e) => setDeviceFilter(e.target.value)}
+                        >
+                            <MenuItem value="all">All</MenuItem>
+                            {devices.map((d) => (
+                                <MenuItem key={d.ip} value={d.ip}>{d.ip}</MenuItem>
                             ))}
-                        </Box>
-                    </Paper>
-
-                    <AlertsPanel devices={devices} />
-                </Box>
-            )}
-
-            {tab === 1 && (
-                <Box sx={{ display: "grid", gap: 2 }}>
-                    <Paper sx={{ p: 3, borderRadius: 4, background: card }}>
-                        <Typography variant="h6" sx={{ color: text, mb: 1 }}>
-                            Organization Directory
-                        </Typography>
-                        <Typography sx={{ opacity: 0.7, color: text, mb: 2 }}>
-                            Manage and inspect organization scope, ownership, and risk posture.
-                        </Typography>
-                        <Table size="small">
-                            <TableHead>
-                                <TableRow>
-                                    <TableCell>Org</TableCell>
-                                    <TableCell>ID</TableCell>
-                                    <TableCell>Scope</TableCell>
-                                    <TableCell align="right">Actions</TableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {orgs.map((o) => (
-                                    <TableRow key={o.id}>
-                                        <TableCell>
-                                            <Typography sx={{ fontWeight: 700 }}>{o.name}</Typography>
-                                        </TableCell>
-                                        <TableCell>{o.id}</TableCell>
-                                        <TableCell>
-                                            {selectedOrgId === o.id ? (
-                                                <Chip label="Active Scope" color="secondary" size="small" />
-                                            ) : (
-                                                <Chip label="Available" size="small" />
-                                            )}
-                                        </TableCell>
-                                        <TableCell align="right">
-                                            <Button
-                                                size="small"
-                                                variant="outlined"
-                                                onClick={() => {
-                                                    setSelectedOrgId(o.id);
-                                                    loadAdmin(o.id);
-                                                }}
-                                            >
-                                                Focus
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
+                        </Select>
+                    </FormControl>
+                    <FormControl size="small">
+                        <InputLabel id="user-filter">User</InputLabel>
+                        <Select
+                            labelId="user-filter"
+                            label="User"
+                            value={userFilter}
+                            onChange={(e) => setUserFilter(e.target.value)}
+                        >
+                            <MenuItem value="all">All</MenuItem>
+                            {users.map((u) => (
+                                <MenuItem key={u.id} value={u.username}>{u.username}</MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+                    <FormControl size="small">
+                        <InputLabel id="category-filter">Category</InputLabel>
+                        <Select
+                            labelId="category-filter"
+                            label="Category"
+                            value={categoryFilter}
+                            onChange={(e) => setCategoryFilter(e.target.value)}
+                        >
+                            <MenuItem value="all">All</MenuItem>
+                            {[...new Set(logs.map((l) => String(l.error_type || "").toLowerCase()))]
+                                .filter(Boolean)
+                                .map((t) => (
+                                    <MenuItem key={t} value={t}>
+                                        {t}
+                                    </MenuItem>
                                 ))}
-                            </TableBody>
-                        </Table>
-                    </Paper>
-
-                    <Paper sx={{ p: 3, borderRadius: 4, background: card }}>
-                        <Typography variant="h6" sx={{ color: text, mb: 1 }}>
-                            Organization Snapshot
-                        </Typography>
-                        <Typography sx={{ opacity: 0.7, color: text, mb: 2 }}>
-                            {selectedOrg?.name || "Current organization scope"} health summary.
-                        </Typography>
-                        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(4,1fr)" }, gap: 2 }}>
-                            <Paper sx={{ p: 2, borderRadius: 3, background: "rgba(255,255,255,0.04)" }}>
-                                <Typography sx={{ opacity: 0.7 }}>Incidents</Typography>
-                                <Typography sx={{ fontSize: 22, fontWeight: 800 }}>{openIncidents}</Typography>
-                            </Paper>
-                            <Paper sx={{ p: 2, borderRadius: 3, background: "rgba(255,255,255,0.04)" }}>
-                                <Typography sx={{ opacity: 0.7 }}>Alerts</Typography>
-                                <Typography sx={{ fontSize: 22, fontWeight: 800 }}>{unackedAlerts}</Typography>
-                            </Paper>
-                            <Paper sx={{ p: 2, borderRadius: 3, background: "rgba(255,255,255,0.04)" }}>
-                                <Typography sx={{ opacity: 0.7 }}>Devices Online</Typography>
-                                <Typography sx={{ fontSize: 22, fontWeight: 800 }}>{onlineDevices}/{devices.length}</Typography>
-                            </Paper>
-                            <Paper sx={{ p: 2, borderRadius: 3, background: "rgba(255,255,255,0.04)" }}>
-                                <Typography sx={{ opacity: 0.7 }}>Users</Typography>
-                                <Typography sx={{ fontSize: 22, fontWeight: 800 }}>{users.length}</Typography>
-                            </Paper>
-                        </Box>
-                    </Paper>
+                        </Select>
+                    </FormControl>
                 </Box>
-            )}
+                <Box sx={{ display: "flex", gap: 1, mt: 1.5, flexWrap: "wrap" }}>
+                    <Chip label="Critical" onClick={() => setSeverityFilter("critical")} />
+                    <Chip label="Open" onClick={() => setStatusFilter("open")} />
+                    <Chip label="Offline Devices" onClick={() => setDeviceStatusFilter("offline")} />
+                    <Chip label="Unassigned" onClick={() => setAssignmentFilter("unassigned")} />
+                    <Chip label="Reset" onClick={() => {
+                        setAdminSearch("");
+                        setSeverityFilter("all");
+                        setStatusFilter("all");
+                        setDeviceStatusFilter("all");
+                        setDeviceFilter("all");
+                        setUserFilter("all");
+                        setCategoryFilter("all");
+                        setAssignmentFilter("all");
+                    }} />
+                </Box>
+            </Paper>
 
-            {tab === 2 && (
-                <Box sx={{ display: "grid", gap: 2 }}>
-                    <Paper sx={{ p: 3, borderRadius: 4, background: card }}>
-                        <Typography variant="h6" sx={{ color: text, mb: 2 }}>
-                            Incident & Log Intelligence
+            {/* INCIDENTS / ISSUES */}
+            <Paper className="lv-panel" sx={{ background: card, mb: 2 }}>
+                <Typography variant="h6" sx={{ color: text, mb: 2 }}>
+                    Incidents & Issues
+                </Typography>
+                {Object.entries(incidentGroups).map(([orgId, items]) => (
+                    <Box key={orgId} sx={{ mb: 2 }}>
+                        <Typography sx={{ fontWeight: 800, mb: 1 }}>
+                            {orgLabel(orgId)} ??? {items.length} incidents
                         </Typography>
                         <Table size="small">
                             <TableHead>
@@ -1325,12 +1306,14 @@ export default function AdminPanel() {
                                     <TableCell>Severity</TableCell>
                                     <TableCell>Status</TableCell>
                                     <TableCell>Description</TableCell>
-                                    <TableCell>Owner</TableCell>
+                                    <TableCell>SLA</TableCell>
+                                    <TableCell>Due</TableCell>
+                                    <TableCell>Assigned</TableCell>
                                     <TableCell align="right">Actions</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                {filteredLogs.slice(0, 25).map((l) => (
+                                {items.slice(0, 25).map((l) => (
                                     <TableRow key={l.id}>
                                         <TableCell>{l.ip}</TableCell>
                                         <TableCell>{l.error_type}</TableCell>
@@ -1338,25 +1321,93 @@ export default function AdminPanel() {
                                         <TableCell>{l.status}</TableCell>
                                         <TableCell>{String(l.description || "").slice(0, 60)}</TableCell>
                                         <TableCell>
-                                            <FormControl size="small" fullWidth>
-                                                <Select
-                                                    value={incidentOwners[l.id] || ""}
-                                                    displayEmpty
-                                                    onChange={(e) =>
-                                                        setIncidentOwners((prev) => ({
-                                                            ...prev,
-                                                            [l.id]: e.target.value,
-                                                        }))
+                                            {taskByLogId[l.id]?.sla_status ? (
+                                                <Chip
+                                                    size="small"
+                                                    label={taskByLogId[l.id].sla_status}
+                                                    color={
+                                                        taskByLogId[l.id].sla_status === "overdue"
+                                                            ? "error"
+                                                            : taskByLogId[l.id].sla_status === "due_soon"
+                                                                ? "warning"
+                                                                : "success"
                                                     }
-                                                >
-                                                    <MenuItem value="">Unassigned</MenuItem>
-                                                    {users.map((u) => (
-                                                        <MenuItem key={u.id} value={u.username}>
-                                                            {u.username}
-                                                        </MenuItem>
-                                                    ))}
-                                                </Select>
-                                            </FormControl>
+                                                />
+                                            ) : (
+                                                <Chip size="small" label="not set" />
+                                            )}
+                                        </TableCell>
+                                        <TableCell>
+                                            {taskByLogId[l.id]?.due_at
+                                                ? new Date(taskByLogId[l.id].due_at).toLocaleString()
+                                                : "—"}
+                                        </TableCell>
+                                        <TableCell>
+                                            {(() => {
+                                                const assignment = assignmentDrafts[l.id] || taskByLogId[l.id] || {};
+                                                return (
+                                            <Stack direction="row" spacing={1}>
+                                                <FormControl size="small" sx={{ minWidth: 110 }}>
+                                                    <Select
+                                                        value={assignment.assigned_type || "none"}
+                                                        onChange={(e) => {
+                                                            const type = e.target.value;
+                                                            if (type === "none") {
+                                                                assignTask(l.id, "none", null);
+                                                                setAssignmentDrafts((prev) => {
+                                                                    const next = { ...prev };
+                                                                    delete next[l.id];
+                                                                    return next;
+                                                                });
+                                                            } else {
+                                                                setAssignmentDrafts((prev) => ({
+                                                                    ...prev,
+                                                                    [l.id]: {
+                                                                        assigned_type: type,
+                                                                        assigned_value: assignment.assigned_value || "",
+                                                                    },
+                                                                }));
+                                                            }
+                                                        }}
+                                                    >
+                                                        <MenuItem value="none">None</MenuItem>
+                                                        <MenuItem value="user">User</MenuItem>
+                                                        <MenuItem value="org">Org</MenuItem>
+                                                    </Select>
+                                                </FormControl>
+                                                <FormControl size="small" sx={{ minWidth: 120 }}>
+                                                    <Select
+                                                        value={assignment.assigned_value || ""}
+                                                        displayEmpty
+                                                        disabled={(assignment.assigned_type || "none") === "none"}
+                                                        onChange={(e) => {
+                                                            const value = e.target.value;
+                                                            const currentType = assignment.assigned_type || "none";
+                                                            if (currentType === "none") return;
+                                                            setAssignmentDrafts((prev) => ({
+                                                                ...prev,
+                                                                [l.id]: { assigned_type: currentType, assigned_value: value },
+                                                            }));
+                                                            assignTask(l.id, currentType, value);
+                                                        }}
+                                                    >
+                                                        <MenuItem value="">Unassigned</MenuItem>
+                                                        {(assignment.assigned_type === "org") && (
+                                                            (isSuperAdmin && l.org_id
+                                                                ? orgs.filter((o) => String(o.id) === String(l.org_id))
+                                                                : orgs
+                                                            ).map((o) => (
+                                                                <MenuItem key={o.id} value={String(o.id)}>{o.name}</MenuItem>
+                                                            ))
+                                                        )}
+                                                        {(assignment.assigned_type === "user") && users.map((u) => (
+                                                            <MenuItem key={u.id} value={u.username}>{u.username}</MenuItem>
+                                                        ))}
+                                                    </Select>
+                                                </FormControl>
+                                            </Stack>
+                                                );
+                                            })()}
                                         </TableCell>
                                         <TableCell align="right">
                                             <Button
@@ -1371,251 +1422,171 @@ export default function AdminPanel() {
                                 ))}
                             </TableBody>
                         </Table>
-                        {filteredLogs.length === 0 && (
-                            <Typography sx={{ opacity: 0.7, mt: 2 }}>No incidents match the current filters.</Typography>
+                        {items.length === 0 && (
+                            <Typography sx={{ opacity: 0.7, mt: 1 }}>No incidents match current filters.</Typography>
                         )}
-                    </Paper>
-                </Box>
-            )}
-
-            {tab === 4 && (
-                <Box sx={{ maxWidth: 900, margin: "0 auto" }}>
-                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                        <Typography variant="h6" sx={{ color: text }}>
-                            Users Management
-                        </Typography>
-                        <Button startIcon={<Add />} variant="contained" onClick={openAddUser}>
-                            Add User
-                        </Button>
                     </Box>
+                ))}
+            </Paper>
 
-                    {filteredUsers.map((u) => (
-                        <Paper
-                            key={u.id}
-                            sx={{
-                                p: 2.2,
-                                mb: 2,
-                                borderRadius: "12px",
-                                background: card,
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                            }}
-                        >
-                            <Box>
-                                <Typography sx={{ color: text, fontWeight: 600 }}>{u.username}</Typography>
-                                <Typography sx={{ opacity: 0.7, color: text }}>
-                                    {u.email} — {u.role}
-                                </Typography>
-                            </Box>
-
-                            <Box>
-                                <Tooltip title="Edit User">
-                                    <IconButton onClick={() => openEditUser(u)}>
-                                        <Edit sx={{ color: "#60a5fa" }} />
-                                    </IconButton>
-                                </Tooltip>
-
-                                <Tooltip title="Delete User">
-                                    <IconButton onClick={() => setConfirmDelete({ open: true, user: u })}>
-                                        <Delete sx={{ color: "#f87171" }} />
-                                    </IconButton>
-                                </Tooltip>
-                            </Box>
-                        </Paper>
-                    ))}
-
-                    <Modal open={openUserModal} onClose={() => setOpenUserModal(false)}>
-                        <Box sx={modalStyle}>
-                            <Typography variant="h6" sx={{ color: text, mb: 2 }}>
-                                {editingUser?.id ? "Edit User" : "Add New User"}
-                            </Typography>
-
-                            <TextField
-                                label="Username"
-                                fullWidth
-                                sx={{ mb: 2 }}
-                                value={editingUser?.username ?? ""}
-                                onChange={(e) => setEditingUser({ ...editingUser, username: e.target.value })}
-                            />
-
-                            <TextField
-                                label="Full Name"
-                                fullWidth
-                                sx={{ mb: 2 }}
-                                value={editingUser?.full_name ?? ""}
-                                onChange={(e) => setEditingUser({ ...editingUser, full_name: e.target.value })}
-                            />
-
-                            <TextField
-                                label="Email"
-                                fullWidth
-                                sx={{ mb: 2 }}
-                                value={editingUser?.email ?? ""}
-                                onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
-                            />
-
-                            <FormControl fullWidth sx={{ mb: 2 }}>
-                                <InputLabel id="role-select-label">Role</InputLabel>
-                                <Select
-                                    labelId="role-select-label"
-                                    label="Role"
-                                    value={editingUser?.role ?? ""}
-                                    onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value })}
-                                >
-                                    <MenuItem value="viewer">viewer</MenuItem>
-                                    <MenuItem value="operator">operator</MenuItem>
-                                    <MenuItem value="org_admin">org_admin</MenuItem>
-                                    <MenuItem value="admin">admin</MenuItem>
-                                    <MenuItem value="super_admin">super_admin</MenuItem>
-                                </Select>
-                            </FormControl>
-
-                            {!editingUser?.id && (
-                                <TextField
-                                    label="Password"
-                                    type="password"
-                                    fullWidth
-                                    sx={{ mb: 2 }}
-                                    value={editingUser?.password ?? ""}
-                                    onChange={(e) => setEditingUser({ ...editingUser, password: e.target.value })}
-                                />
-                            )}
-
-                            <Button variant="contained" fullWidth onClick={handleSaveUser} disabled={savingUser}>
-                                {savingUser ? "Saving..." : "Save"}
-                            </Button>
-                        </Box>
-                    </Modal>
-
-                    <Dialog
-                        open={confirmDelete.open}
-                        onClose={() => setConfirmDelete({ open: false, user: null })}
-                    >
-                        <DialogTitle>מחיקת משתמש</DialogTitle>
-                        <DialogContent>
-                            <Typography sx={{ mt: 1 }}>
-                                למחוק את <b>{confirmDelete.user?.username}</b>?
-                            </Typography>
-                            <Typography sx={{ opacity: 0.7, mt: 1 }}>פעולה זו לא ניתנת לשחזור.</Typography>
-                        </DialogContent>
-                        <DialogActions>
-                            <Button onClick={() => setConfirmDelete({ open: false, user: null })}>ביטול</Button>
-                            <Button color="error" variant="contained" onClick={confirmDeleteUser}>
-                                מחיקה
-                            </Button>
-                        </DialogActions>
-                    </Dialog>
-                </Box>
-            )}
-
-            {tab === 3 && (
-                <Box sx={{ maxWidth: 950, margin: "0 auto" }}>
-                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                        <Typography variant="h6" sx={{ color: text }}>
-                            Devices Status
+            {/* DEVICES */}
+            <Paper className="lv-panel" sx={{ background: card, mb: 2 }}>
+                <Typography variant="h6" sx={{ color: text, mb: 2 }}>
+                    Devices
+                </Typography>
+                <Paper sx={{ p: 2.5, borderRadius: 4, background: card, mb: 2 }}>
+                    <Typography sx={{ color: text, mb: 1, fontWeight: 700 }}>
+                        CPU Temperature Overview
+                    </Typography>
+                    <Bar data={cpuChart} />
+                </Paper>
+                {Object.entries(deviceGroups).map(([orgId, items]) => (
+                    <Box key={orgId} sx={{ mb: 2 }}>
+                        <Typography sx={{ fontWeight: 800, mb: 1 }}>
+                            {orgLabel(orgId)} ??? {items.length} devices
                         </Typography>
-                        <Button variant="outlined" onClick={() => loadAdmin()}>
-                            Refresh
-                        </Button>
-                    </Box>
-
-                    {filteredDevices.map((d) => (
-                        <Paper
-                            key={d.ip}
-                            sx={{
-                                p: 3,
-                                mb: 2,
-                                borderRadius: "14px",
-                                background: card,
-                                borderLeft: `6px solid ${d.online ? "#4ade80" : "#ef4444"}`,
-                            }}
-                        >
-                            <Box display="flex" justifyContent="space-between" alignItems="center">
-                                <Box>
-                                    <Typography sx={{ color: text, fontWeight: 700 }}>
-                                        {d.ip} — {d.online ? "Online" : "Offline"}
-                                    </Typography>
-
-                                    {d.online && (
-                                        <Typography sx={{ mt: 1, color: text }}>
-                                            CPU: {d.cpu_temp}°C — RAM: {d.ram_used}% — GPU: {d.gpu_temp}°C
+                        {items.map((d) => (
+                            <Paper
+                                key={d.ip}
+                                sx={{
+                                    p: 2,
+                                    mb: 1,
+                                    borderRadius: "12px",
+                                    background: card,
+                                    borderLeft: `6px solid ${d.online ? "#4ade80" : "#ef4444"}`,
+                                }}
+                            >
+                                <Box display="flex" justifyContent="space-between" alignItems="center">
+                                    <Box>
+                                        <Typography sx={{ color: text, fontWeight: 700 }}>
+                                            {d.ip} ??? {d.online ? "Online" : "Offline"}
                                         </Typography>
-                                    )}
+                                        {d.online && (
+                                            <Typography sx={{ mt: 1, color: text }}>
+                                                CPU: {d.cpu_temp}??C ??? RAM: {d.ram_used}% ??? GPU: {d.gpu_temp}??C
+                                            </Typography>
+                                        )}
+                                    </Box>
+                                    <Box>
+                                        <Tooltip title="Restart Device">
+                                            <span>
+                                                <IconButton
+                                                    onClick={() => doRestart(d.ip)}
+                                                    disabled={!d.online || deviceBusy === `${d.ip}:restart`}
+                                                >
+                                                    <RestartAlt sx={{ color: "#fb7185" }} />
+                                                </IconButton>
+                                            </span>
+                                        </Tooltip>
+                                        <Tooltip title="Run Diagnostics">
+                                            <span>
+                                                <IconButton
+                                                    onClick={() => doDiagnostics(d.ip)}
+                                                    disabled={!d.online || deviceBusy === `${d.ip}:diagnostics`}
+                                                >
+                                                    <Memory sx={{ color: "#38bdf8" }} />
+                                                </IconButton>
+                                            </span>
+                                        </Tooltip>
+                                        <Tooltip title="Ping Device">
+                                            <span>
+                                                <IconButton
+                                                    onClick={() => doPing(d.ip)}
+                                                    disabled={deviceBusy === `${d.ip}:ping`}
+                                                >
+                                                    <Wifi sx={{ color: "#34d399" }} />
+                                                </IconButton>
+                                            </span>
+                                        </Tooltip>
+                                    </Box>
                                 </Box>
-
-                                <Box>
-                                    <Tooltip title="Restart Device">
-                                        <span>
-                                            <IconButton
-                                                onClick={() => doRestart(d.ip)}
-                                                disabled={!d.online || deviceBusy === `${d.ip}:restart`}
-                                            >
-                                                <RestartAlt sx={{ color: "#fb7185" }} />
-                                            </IconButton>
-                                        </span>
-                                    </Tooltip>
-
-                                    <Tooltip title="Run Diagnostics">
-                                        <span>
-                                            <IconButton
-                                                onClick={() => doDiagnostics(d.ip)}
-                                                disabled={!d.online || deviceBusy === `${d.ip}:diagnostics`}
-                                            >
-                                                <Memory sx={{ color: "#38bdf8" }} />
-                                            </IconButton>
-                                        </span>
-                                    </Tooltip>
-
-                                    <Tooltip title="Ping Device">
-                                        <span>
-                                            <IconButton
-                                                onClick={() => doPing(d.ip)}
-                                                disabled={deviceBusy === `${d.ip}:ping`}
-                                            >
-                                                <Wifi sx={{ color: "#34d399" }} />
-                                            </IconButton>
-                                        </span>
-                                    </Tooltip>
-                                </Box>
-                            </Box>
-
-                            <Box sx={{ display: "flex", gap: 1, mt: 1, flexWrap: "wrap" }}>
-                                <Button
-                                    size="small"
-                                    variant="outlined"
-                                    onClick={() => {
+                                <Box sx={{ display: "flex", gap: 1, mt: 1, flexWrap: "wrap" }}>
+                                    <Button size="small" variant="outlined" onClick={() => {
                                         localStorage.setItem("search-ip-value", JSON.stringify(d.ip));
                                         navigate("/search");
-                                    }}
-                                >
-                                    Diagnostics
-                                </Button>
-                                <Button
-                                    size="small"
-                                    variant="outlined"
-                                    onClick={() => navigate("/realtime")}
-                                >
-                                    Realtime
-                                </Button>
-                                <Button
-                                    size="small"
-                                    variant="outlined"
-                                    onClick={() => navigate("/hardware")}
-                                >
-                                    Hardware
-                                </Button>
-                            </Box>
-                        </Paper>
+                                    }}>
+                                        Diagnostics
+                                    </Button>
+                                    <Button size="small" variant="outlined" onClick={() => navigate("/realtime")}>
+                                        Realtime
+                                    </Button>
+                                    <Button size="small" variant="outlined" onClick={() => navigate("/hardware")}>
+                                        Hardware
+                                    </Button>
+                                </Box>
+                            </Paper>
+                        ))}
+                    </Box>
+                ))}
+            </Paper>
+
+            {/* USERS */}
+            <Paper className="lv-panel" sx={{ background: card, mb: 2 }}>
+                <Typography variant="h6" sx={{ color: text, mb: 2 }}>
+                    Users
+                </Typography>
+                <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                    <Typography sx={{ opacity: 0.7 }}>Organization-scoped user management</Typography>
+                    <Button startIcon={<Add />} variant="contained" onClick={openAddUser}>
+                        Add User
+                    </Button>
+                </Box>
+                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mb: 2 }}>
+                    {Object.entries(roleCounts).map(([role, count]) => (
+                        <Chip key={role} label={`${role}: ${count}`} />
                     ))}
                 </Box>
-            )}
+                {Object.entries(userGroups).map(([orgId, items]) => (
+                    <Box key={orgId} sx={{ mb: 2 }}>
+                        <Typography sx={{ fontWeight: 800, mb: 1 }}>
+                            {orgLabel(orgId)} ??? {items.length} users
+                        </Typography>
+                        {items.map((u) => (
+                            <Paper
+                                key={u.id}
+                                sx={{
+                                    p: 2.2,
+                                    mb: 1.5,
+                                    borderRadius: "12px",
+                                    background: card,
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    alignItems: "center",
+                                }}
+                            >
+                                <Box>
+                                    <Typography sx={{ color: text, fontWeight: 600 }}>{u.username}</Typography>
+                                    <Typography sx={{ opacity: 0.7, color: text }}>
+                                        {u.email} ??? {u.role}
+                                    </Typography>
+                                </Box>
+                                <Box>
+                                    <Tooltip title="Edit User">
+                                        <IconButton onClick={() => openEditUser(u)}>
+                                            <Edit sx={{ color: "#60a5fa" }} />
+                                        </IconButton>
+                                    </Tooltip>
+                                    <Tooltip title="Delete User">
+                                        <IconButton onClick={() => setConfirmDelete({ open: true, user: u })}>
+                                            <Delete sx={{ color: "#f87171" }} />
+                                        </IconButton>
+                                    </Tooltip>
+                                </Box>
+                            </Paper>
+                        ))}
+                    </Box>
+                ))}
+            </Paper>
 
-            {tab === 5 && (
-                <Box sx={{ maxWidth: 980, margin: "0 auto", display: "grid", gap: 2 }}>
-                    <Paper sx={{ p: 3, borderRadius: 4, background: card }}>
-                        <Typography variant="h6" sx={{ color: text, mb: 2 }}>
-                            Alerts & Escalations
+            {/* ALERTS */}
+            <Paper className="lv-panel" sx={{ background: card, mb: 2 }}>
+                <Typography variant="h6" sx={{ color: text, mb: 2 }}>
+                    Alerts
+                </Typography>
+                {Object.entries(alertGroups).map(([orgId, items]) => (
+                    <Box key={orgId} sx={{ mb: 2 }}>
+                        <Typography sx={{ fontWeight: 800, mb: 1 }}>
+                            {orgLabel(orgId)} ??? {items.length} alerts
                         </Typography>
                         <Table size="small">
                             <TableHead>
@@ -1628,68 +1599,185 @@ export default function AdminPanel() {
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                {filteredAlerts.slice(0, 20).map((a) => (
+                                {items.slice(0, 20).map((a) => (
                                     <TableRow key={a.id}>
                                         <TableCell>{a.severity}</TableCell>
                                         <TableCell>{a.type}</TableCell>
-                                        <TableCell>{a.device_ip || "â€”"}</TableCell>
+                                        <TableCell>{a.device_ip || "???"}</TableCell>
                                         <TableCell>{String(a.message || "").slice(0, 70)}</TableCell>
                                         <TableCell>{a.acknowledged ? "Acknowledged" : "Open"}</TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>
                         </Table>
-                        {filteredAlerts.length === 0 && (
-                            <Typography sx={{ opacity: 0.7, mt: 2 }}>No alerts match the current filters.</Typography>
-                        )}
-                    </Paper>
-                    <Paper sx={{ p: 3, borderRadius: 4, background: card }}>
-                        <Typography variant="h6" sx={{ color: text, mb: 2 }}>
-                            Automated Alert Rules
-                        </Typography>
-                        <AlertsPanel devices={devices} />
-                    </Paper>
-                </Box>
-            )}
+                    </Box>
+                ))}
+                <Paper sx={{ p: 3, borderRadius: 4, background: card, mt: 2 }}>
+                    <Typography variant="h6" sx={{ color: text, mb: 2 }}>
+                        Automated Alert Rules
+                    </Typography>
+                    <AlertsPanel devices={devices} />
+                </Paper>
+            </Paper>
 
-            {tab === 6 && (
-                <Box sx={{ maxWidth: 900, margin: "0 auto" }}>
-                    <Paper sx={{ p: 3, borderRadius: 4, background: card }}>
-                        <Typography variant="h6" sx={{ color: text, mb: 2 }}>
-                            System Settings
-                        </Typography>
-
-                        <Divider sx={{ opacity: 0.2, mb: 2 }} />
-
-                        <Typography sx={{ color: text, mb: 1, fontWeight: 600 }}>
-                            Theme Mode
-                        </Typography>
-                        <Chip label={dark ? "Dark Mode Enabled" : "Light Mode Enabled"} color="secondary" />
-
-                        <Divider sx={{ opacity: 0.2, my: 2 }} />
-
-                        <Typography sx={{ color: text, mb: 1, fontWeight: 600 }}>
-                            API Keys
-                        </Typography>
-                        <Button variant="outlined" startIcon={<SettingsIcon />}>
+            {/* QUICK ACTIONS */}
+            <Paper className="lv-panel" sx={{ background: card, mb: 2 }}>
+                <Typography variant="h6" sx={{ color: text, mb: 2 }}>
+                    Quick Actions
+                </Typography>
+                <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "1.4fr 1fr" } }}>
+                    <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                        <Button variant="outlined" onClick={() => loadAdmin()}>Refresh Data</Button>
+                        <Button variant="outlined" onClick={() => navigate("/logs")}>Open Logs</Button>
+                        <Button variant="outlined" onClick={() => navigate("/realtime")}>Open Realtime</Button>
+                        <Button variant="outlined" onClick={() => navigate("/search")}>Open Diagnostics</Button>
+                        <Button variant="outlined" onClick={() => navigate("/hardware")}>Hardware Logs</Button>
+                    </Box>
+                    <Paper sx={{ p: 2, borderRadius: 3, background: "rgba(255,255,255,0.04)" }}>
+                        <Typography sx={{ fontWeight: 800, mb: 1 }}>Recent Activity</Typography>
+                        <Box sx={{ display: "grid", gap: 0.6 }}>
+                            {recentActivity.length === 0 && (
+                                <Typography sx={{ opacity: 0.7 }}>No recent activity.</Typography>
+                            )}
+                            {recentActivity.map((item) => (
+                                <Box key={item.id} sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
+                                    <Typography sx={{ fontWeight: 700 }}>{item.label}</Typography>
+                                    <Typography sx={{ opacity: 0.7, fontSize: 12 }}>
+                                        {new Date(item.ts).toLocaleString()}
+                                    </Typography>
+                                </Box>
+                            ))}
+                        </Box>
+                        <Divider sx={{ opacity: 0.2, my: 1.5 }} />
+                        <Typography sx={{ fontWeight: 800, mb: 1 }}>Admin Settings</Typography>
+                        <Chip label={dark ? "Dark Mode" : "Light Mode"} sx={{ mr: 1 }} />
+                        <Button variant="outlined" size="small" startIcon={<SettingsIcon />} sx={{ mt: 1 }}>
                             Manage Keys
                         </Button>
-
-                        <Divider sx={{ opacity: 0.2, my: 2 }} />
-
-                        <Typography sx={{ color: text, fontWeight: 600 }}>
-                            Permissions Matrix
-                        </Typography>
-                        <Typography sx={{ opacity: 0.6, color: text }}>
-                            (Define which roles can edit, create, delete logs, devices, users…)
-                        </Typography>
                     </Paper>
                 </Box>
-            )}
+            </Paper>
 
+            {/* AI SUMMARY */}
+            <Paper className="lv-panel" sx={{ background: card, mb: 2 }}>
+                <Typography variant="h6" sx={{ color: text, mb: 2 }}>
+                    AI Summary
+                </Typography>
+                {aiOrgSummary ? (
+                    <Box sx={{ display: "grid", gap: 0.6 }}>
+                        <Typography sx={{ fontWeight: 800 }}>{aiOrgSummary.summary}</Typography>
+                        {(aiOrgSummary.risks || []).slice(0, 3).map((r, idx) => (
+                            <Typography key={idx} sx={{ opacity: 0.75 }}>??? {r}</Typography>
+                        ))}
+                        {(aiOrgSummary.recommendations || []).slice(0, 2).map((r, idx) => (
+                            <Typography key={`rec-${idx}`} sx={{ opacity: 0.75 }}>??? {r}</Typography>
+                        ))}
+                        {(aiOrgSummary.root_causes || []).slice(0, 2).map((r, idx) => (
+                            <Typography key={`root-${idx}`} sx={{ opacity: 0.7 }}>Possible: {r}</Typography>
+                        ))}
+                    </Box>
+                ) : (
+                    <Box sx={{ display: "grid", gap: 0.6 }}>
+                        <Typography sx={{ fontWeight: 800, mb: 0.5 }}>{aiAdminSummary.headline}</Typography>
+                        {aiAdminSummary.reasons.map((r, idx) => (
+                            <Typography key={idx} sx={{ opacity: 0.75 }}>{r}</Typography>
+                        ))}
+                    </Box>
+                )}
+                <Button
+                    variant="outlined"
+                    size="small"
+                    sx={{ mt: 1 }}
+                    onClick={runAiOrgSummary}
+                    disabled={aiLoading}
+                >
+                    {aiLoading ? "Analyzing..." : "Generate AI Summary"}
+                </Button>
+            </Paper>
+
+            {/* USERS MODAL */}
+            <Modal open={openUserModal} onClose={() => setOpenUserModal(false)}>
+                <Box sx={modalStyle}>
+                    <Typography variant="h6" sx={{ color: text, mb: 2 }}>
+                        {editingUser?.id ? "Edit User" : "Add New User"}
+                    </Typography>
+
+                    <TextField
+                        label="Username"
+                        fullWidth
+                        sx={{ mb: 2 }}
+                        value={editingUser?.username ?? ""}
+                        onChange={(e) => setEditingUser({ ...editingUser, username: e.target.value })}
+                    />
+
+                    <TextField
+                        label="Full Name"
+                        fullWidth
+                        sx={{ mb: 2 }}
+                        value={editingUser?.full_name ?? ""}
+                        onChange={(e) => setEditingUser({ ...editingUser, full_name: e.target.value })}
+                    />
+
+                    <TextField
+                        label="Email"
+                        fullWidth
+                        sx={{ mb: 2 }}
+                        value={editingUser?.email ?? ""}
+                        onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
+                    />
+
+                    <FormControl fullWidth sx={{ mb: 2 }}>
+                        <InputLabel id="role-select-label">Role</InputLabel>
+                        <Select
+                            labelId="role-select-label"
+                            label="Role"
+                            value={editingUser?.role ?? ""}
+                            onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value })}
+                        >
+                            <MenuItem value="viewer">viewer</MenuItem>
+                            <MenuItem value="operator">operator</MenuItem>
+                            <MenuItem value="org_admin">org_admin</MenuItem>
+                            <MenuItem value="admin">admin</MenuItem>
+                            <MenuItem value="super_admin">super_admin</MenuItem>
+                        </Select>
+                    </FormControl>
+
+                    {!editingUser?.id && (
+                        <TextField
+                            label="Password"
+                            type="password"
+                            fullWidth
+                            sx={{ mb: 2 }}
+                            value={editingUser?.password ?? ""}
+                            onChange={(e) => setEditingUser({ ...editingUser, password: e.target.value })}
+                        />
+                    )}
+
+                    <Button variant="contained" fullWidth onClick={handleSaveUser} disabled={savingUser}>
+                        {savingUser ? "Saving..." : "Save"}
+                    </Button>
                 </Box>
-            </Box>
+            </Modal>
 
+            {/* DELETE CONFIRM */}
+            <Dialog
+                open={confirmDelete.open}
+                onClose={() => setConfirmDelete({ open: false, user: null })}
+            >
+                <DialogTitle>Delete User</DialogTitle>
+                <DialogContent>
+                    <Typography sx={{ mt: 1 }}>
+                        Delete <b>{confirmDelete.user?.username}</b>?
+                    </Typography>
+                    <Typography sx={{ opacity: 0.7, mt: 1 }}>This action cannot be undone.</Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setConfirmDelete({ open: false, user: null })}>Cancel</Button>
+                    <Button color="error" variant="contained" onClick={confirmDeleteUser}>
+                        Delete
+                    </Button>
+                </DialogActions>
+            </Dialog>
             {/* ---------------- Diagnostics Modal ---------------- */}
             <Modal open={openDiagModal} onClose={() => setOpenDiagModal(false)}>
                 <Box sx={diagModalStyle}>
